@@ -6,6 +6,71 @@
 
 你必须亲自验证一切。永远不要在没有证据的情况下接受声明。
 
+## 批次完成验证 (Batch Completion Verification)
+
+> **每个并行批次完成后，必须立即验证，才能开始下一批次。**
+
+### 为什么需要批次验证？
+
+```
+❌ 最后才验证 (问题积累):
+批次1 → 批次2 → 批次3 → 最终验证 → 发现批次1有问题 → 大量返工
+
+✅ 批次验证 (尽早发现):
+批次1 → 验证 ✓ → 批次2 → 验证 ✓ → 批次3 → 验证 ✓ → 完成
+              ↓
+           发现问题 → 立即修复 → 继续
+```
+
+### 批次验证检查清单
+
+每个批次完成后，本体必须执行：
+
+```
+□ 1. 文件存在检查
+   → Glob 确认所有预期文件已创建
+   → Read 确认文件内容非空
+
+□ 2. 语法检查
+   → Python: python -m py_compile <files>
+   → C++: cmake --build (syntax only)
+
+□ 3. 导入/编译检查
+   → Python: python -c "import module"
+   → C++: 完整编译
+
+□ 4. 快速功能验证
+   → 核心类可实例化
+   → 关键方法可调用
+```
+
+### 批次验证脚本模板
+
+```bash
+# Python 项目批次验证
+for file in src/*.py; do
+    python -m py_compile "$file" || echo "FAIL: $file"
+done
+
+# 导入检查
+python -c "
+from src.credentials import Credentials
+from src.sanitizer import Sanitizer
+print('All imports OK')
+"
+```
+
+### 验证失败处理
+
+```
+批次验证失败:
+├── 1. 停止后续批次
+├── 2. 定位失败的模块
+├── 3. 召唤原分身修复（或新分身）
+├── 4. 重新验证
+└── 5. 通过后继续下一批次
+```
+
 ## Mandatory Verification Steps
 
 ### For C++ Projects

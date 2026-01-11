@@ -120,6 +120,93 @@
 - [避免的技术债]
 ```
 
+## 接口契约文档 (Interface Contract)
+
+> **并行实现前，必须先定义接口契约，避免集成时的接口不匹配问题。**
+
+### 何时需要接口契约
+
+| 场景 | 是否需要 | 原因 |
+|------|----------|------|
+| 多个模块并行实现 | ✅ 必须 | 确保接口一致 |
+| 单模块实现 | ❌ 不需要 | 无并行集成风险 |
+| 已有参考实现 | ⚠️ 可选 | 可从参考代码推断 |
+
+### 契约文档位置
+
+```
+.wukong/notepads/{plan}/interfaces.md
+```
+
+### 契约文档格式
+
+```markdown
+# 接口契约: {Project Name}
+
+## 模块依赖图
+```
+A ──→ C
+B ──→ C
+```
+
+## 模块接口定义
+
+### ModuleA (credentials.py)
+
+```python
+class Credentials:
+    @staticmethod
+    def get_git_token() -> Optional[str]:
+        """获取 Git Token，返回 None 表示未配置"""
+        ...
+
+    @staticmethod
+    def get_ollama_config() -> dict:
+        """返回 {"url": str, "model": str, "timeout": int}"""
+        ...
+```
+
+### ModuleB (sanitizer.py)
+
+```python
+class Sanitizer:
+    @classmethod
+    def sanitize(cls, data: Any) -> Any:
+        """递归脱敏，移除敏感字段"""
+        ...
+```
+
+## 错误处理约定
+
+| 模块 | 错误处理方式 |
+|------|-------------|
+| credentials | 返回 None 或 默认值 |
+| tools | 返回 {"error": str} |
+| agent | 抛出 RuntimeError |
+| server | 抛出 HTTPException |
+
+## 数据流
+
+```
+用户请求 → Server → Agent → Tools → 返回脱敏结果
+```
+```
+
+### 契约生成时机
+
+```
+设计阶段 (架构悟空):
+├── 1. 确定模块划分
+├── 2. 定义模块接口
+├── 3. 生成 interfaces.md
+└── 4. 分发给各斗战胜佛
+
+实现阶段 (斗战胜佛):
+├── 1. 阅读 interfaces.md
+├── 2. 严格按接口实现
+└── 3. 不得擅自修改接口
+```
+
 ## Parallel Execution Strategy (筋斗云并行策略)
 
 > **筋斗云**: 一个筋斗十万八千里。分身术的精髓在于**同时出击**，而非排队等候。
