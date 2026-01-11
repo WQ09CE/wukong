@@ -188,10 +188,19 @@
 ```
 上下文使用监测:
 ├── < 50%  → 🔶 巨形态 (完整信息)
-├── 50-75% → 🔹 常形态 (结构化压缩)
-├── 75-90% → 🔸 缩形态 (核心摘要)
-└── > 90%  → 触发"存档+重启"协议
+├── 50-70% → 🔹 常形态 (结构化压缩)
+├── 70-85% → 🔸 缩形态 (核心摘要) + 修剪提醒
+├── 85-95% → 触发 DCP 动态修剪
+└── > 95%  → 触发"存档+重启"协议
 ```
+
+### 阶梯响应机制
+
+| 阈值 | 状态 | 动作 |
+|------|------|------|
+| 70% | ⚠️ 黄灯 | 提醒"上下文还有空间"，防止仓促收尾 |
+| 85% | 🟠 橙灯 | 自动执行 DCP 修剪策略 |
+| 95% | 🔴 红灯 | 强制存档，压缩后继续 |
 
 ### 存档+重启协议
 
@@ -224,6 +233,250 @@
 | "简要概括" | 切换到缩形态 |
 | "存档一下" | 执行存档协议 |
 | "加载上下文" | 读取最近存档 |
+| "修剪上下文" | 执行 DCP 修剪 |
+
+---
+
+## Dynamic Context Pruning (动态上下文修剪)
+
+> 借鉴自 [oh-my-opencode](https://github.com/code-yeongyu/oh-my-opencode) 的 DCP 插件设计。
+> **核心理念**: 主动移除过时的工具输出，保留关键信息，防止上下文"中毒"。
+
+### DCP 策略矩阵
+
+```
+动态上下文修剪 (DCP):
+├── 自动策略 (零成本):
+│   ├── 🔄 Deduplication  - 去重复工具调用
+│   ├── 📝 Supersede      - 覆盖过时的文件读取
+│   ├── ❌ Purge Errors   - 清理失败工具输出
+│   └── ✂️ Truncation     - 截断冗长输出
+│
+├── 保护机制:
+│   ├── 🛡️ Turn Protection - 轮次保护
+│   └── 📌 Anchor Protection - 锚点保护
+│
+└── AI辅助策略:
+    └── 🗑️ Discard - 内观悟空主动标记可删除内容
+```
+
+### 自动策略详解
+
+#### 🔄 Deduplication (去重复)
+
+**原理**: 同一文件/资源的多次读取，只保留最新结果。
+
+```
+示例:
+├── Turn 5: Read("config.py") → 保留
+├── Turn 8: Read("config.py") → 最新，保留
+├── Turn 3: Read("config.py") → 旧的，修剪 ✂️
+└── Turn 5 的结果被 Turn 8 覆盖
+```
+
+**配置**:
+```yaml
+deduplication:
+  enabled: true
+  scope:
+    - Read           # 文件读取
+    - Glob           # 文件搜索
+    - Grep           # 内容搜索
+```
+
+#### 📝 Supersede Writes (覆盖写入)
+
+**原理**: 写入后又被读取的文件，删除写入时的内容（读取结果已包含最新状态）。
+
+```
+示例:
+├── Turn 3: Write("app.py", content) → 修剪 ✂️
+├── Turn 5: Read("app.py") → 保留 (包含最新内容)
+└── Write 的内容已过时，Read 的结果更准确
+```
+
+#### ❌ Purge Errors (清理错误)
+
+**原理**: 失败的工具调用，在 N 轮后清理其输入内容（保留错误信息）。
+
+```
+配置:
+purge_errors:
+  enabled: true
+  turns_before_purge: 4    # 4轮后清理
+  keep_error_message: true  # 保留错误信息用于学习
+```
+
+#### ✂️ Truncation (输出截断)
+
+**原理**: 搜索类工具的输出动态截断，防止单次搜索吃掉全部上下文。
+
+```
+截断规则:
+├── Grep 输出: 保留 50% 剩余空间，最大 50k tokens
+├── Glob 输出: 最多 200 个文件路径
+├── 搜索结果: 保留前 N 个最相关的
+└── 长文件: 分块读取而非一次性读取
+
+计算公式:
+max_output = min(50000, remaining_context * 0.5)
+```
+
+**截断时优先保留**:
+1. 匹配度最高的结果
+2. 最近修改的文件
+3. 与当前任务相关的内容
+
+### 保护机制
+
+#### 🛡️ Turn Protection (轮次保护)
+
+**原理**: 最近 N 轮的内容不被修剪，避免丢失正在进行的工作。
+
+```
+配置:
+turn_protection:
+  protected_turns: 4       # 最近4轮不修剪
+  applies_to:
+    - tool_outputs         # 工具输出
+    - assistant_responses  # 助手回复
+```
+
+#### 📌 Anchor Protection (锚点保护)
+
+**原理**: 包含锚点引用的内容永不修剪。
+
+```
+规则:
+├── 包含 [Dxxx] 的决策内容 → 保护
+├── 包含 [Cxxx] 的约束内容 → 保护
+├── 包含 [Ixxx] 的接口定义 → 保护
+└── 锚点文件 anchors.md → 永不修剪
+```
+
+### AI辅助策略
+
+#### 🗑️ Discard (主动丢弃)
+
+**执行者**: 内观悟空
+
+**触发时机**:
+- 上下文 > 70% 时的标准/深度内观
+- 用户主动请求 "修剪上下文"
+
+**工作流程**:
+```
+内观悟空扫描上下文:
+├── 识别可丢弃内容:
+│   ├── 已完成且不再需要的探索结果
+│   ├── 已解决问题的调试信息
+│   ├── 被否决的方案讨论
+│   └── 重复的确认对话
+│
+├── 生成丢弃建议:
+│   | 内容 | 类型 | 丢弃原因 | 安全? |
+│   |------|------|----------|-------|
+│   | Turn 5 Grep 结果 | 搜索 | 已找到目标 | ✅ |
+│   | Turn 8 错误堆栈 | 错误 | 已修复 | ✅ |
+│   | Turn 12 方案讨论 | 讨论 | 已决策 | ⚠️ 创建锚点 |
+│
+└── 执行丢弃 (或等待确认)
+```
+
+### DCP 配置文件
+
+存储位置: `.wukong/context/dcp-config.yaml`
+
+```yaml
+# DCP 配置
+dcp:
+  enabled: true
+
+  # 自动策略
+  auto_strategies:
+    deduplication: true
+    supersede_writes: true
+    purge_errors: true
+    truncation: true
+
+  # 保护机制
+  protection:
+    turn_protection: 4          # 最近4轮不修剪
+    anchor_protection: true     # 锚点内容保护
+    protected_patterns:         # 保护的文件模式
+      - "*.md"
+      - "anchors.md"
+      - "requirements.md"
+      - "design.md"
+
+  # 截断配置
+  truncation:
+    grep_max_tokens: 50000
+    grep_headroom: 0.5          # 保留50%剩余空间
+    glob_max_files: 200
+    read_chunk_size: 1000       # 分块读取行数
+
+  # AI辅助
+  ai_assisted:
+    discard_enabled: true
+    require_confirmation: false  # 自动执行或需要确认
+
+  # 错误清理
+  error_purge:
+    turns_before_purge: 4
+    keep_error_message: true
+```
+
+### DCP 执行时机
+
+```
+DCP 触发点:
+├── 上下文 > 85% → 自动执行完整 DCP
+├── 每次 Grep/Glob 输出 → 自动截断
+├── 内观悟空反思时 → AI辅助丢弃
+├── 用户说"修剪" → 手动触发
+└── 存档前 → 先 DCP 再存档
+```
+
+### DCP 执行报告
+
+```markdown
+## DCP 执行报告
+
+**执行时间**: {timestamp}
+**触发原因**: 上下文使用 87%
+
+### 修剪统计
+| 策略 | 修剪项 | 节约 Tokens |
+|------|--------|-------------|
+| Deduplication | 3 重复读取 | ~2,500 |
+| Supersede | 2 过时写入 | ~1,200 |
+| Purge Errors | 1 失败调用 | ~800 |
+| Truncation | 2 长输出 | ~5,000 |
+| **总计** | **8 项** | **~9,500** |
+
+### 保护的内容
+- 锚点 [D001]-[D005]: 保护
+- 最近 4 轮: 保护
+- requirements.md 读取: 保护
+
+### 修剪后状态
+- 上下文使用: 87% → 72%
+- 可继续工作
+```
+
+### 权衡说明
+
+> ⚠️ **缓存 vs 修剪**: DCP 修改消息内容会导致 prompt 缓存失效。
+> 但在大多数情况下，**token 节约 > 缓存损失**，尤其是长会话中。
+
+```
+何时修剪更划算:
+├── 长会话 (> 20 轮) → 修剪
+├── 大量搜索结果 → 截断
+├── 反复读取同一文件 → 去重
+└── 短会话 (< 10 轮) → 可能不需要
+```
 
 ---
 
@@ -232,21 +485,25 @@
 ```
 .wukong/context/
 ├── anchors.md              # 全局锚点索引
+├── dcp-config.yaml         # DCP 配置文件
 ├── current/                # 当前会话
 │   ├── compact.md          # 缩形态
 │   ├── normal.md           # 常形态
-│   └── expanded.md         # 巨形态
+│   ├── expanded.md         # 巨形态
+│   └── dcp-report.md       # 最近 DCP 报告
 ├── sessions/               # 历史会话存档
 │   ├── 2024-01-15-code-review-agent/
 │   │   ├── compact.md
 │   │   ├── normal.md
-│   │   └── expanded.md
+│   │   ├── expanded.md
+│   │   └── dcp-report.md
 │   └── 2024-01-16-ruyi-protocol/
 │       └── ...
 └── templates/              # 模板
     ├── compact-template.md
     ├── normal-template.md
-    └── anchor-template.md
+    ├── anchor-template.md
+    └── dcp-config-template.yaml
 ```
 
 ---
@@ -309,13 +566,19 @@ Task(
 ├── 决策结论 (不是讨论过程)
 ├── 接口签名 (不是实现细节)
 ├── 约束规则 (不是背景解释)
-└── 当前状态 (不是历史过程)
+├── 当前状态 (不是历史过程)
+├── 最近 N 轮的完整内容 (轮次保护)
+└── 锚点引用的内容 (锚点保护)
 
-压缩时丢弃:
+压缩时丢弃 (DCP 自动处理):
 ├── 探索性讨论
 ├── 已否决的方案
 ├── 临时调试信息
-└── 重复的确认对话
+├── 重复的确认对话
+├── 🔄 重复读取的旧结果 (Deduplication)
+├── 📝 被后续读取覆盖的写入 (Supersede)
+├── ❌ 4轮前的失败工具输入 (Purge)
+└── ✂️ 截断后的冗长输出 (Truncation)
 ```
 
 ### 3. 形态选择
@@ -338,6 +601,8 @@ Task(
 | `锚点` | 显示所有锚点 |
 | `压缩` | 强制切换到缩形态 |
 | `展开` | 强制切换到巨形态 |
+| `修剪` | 执行 DCP 动态修剪 |
+| `修剪报告` | 显示最近 DCP 执行报告 |
 
 ---
 

@@ -1,0 +1,109 @@
+# Dynamic Context Pruning (DCP) Configuration
+# 动态上下文修剪配置
+#
+# 借鉴自 oh-my-opencode DCP 插件设计
+# https://github.com/Opencode-DCP/opencode-dynamic-context-pruning
+
+dcp:
+  # 是否启用 DCP
+  enabled: true
+
+  # ===================
+  # 自动策略 (零成本)
+  # ===================
+  auto_strategies:
+    # 去重复: 同一资源的多次读取只保留最新
+    deduplication: true
+
+    # 覆盖写入: 写入后被读取的内容，删除写入部分
+    supersede_writes: true
+
+    # 清理错误: N轮后清理失败工具的输入
+    purge_errors: true
+
+    # 输出截断: 搜索结果动态截断
+    truncation: true
+
+  # ===================
+  # 保护机制
+  # ===================
+  protection:
+    # 轮次保护: 最近N轮不被修剪
+    turn_protection: 4
+
+    # 锚点保护: 包含锚点引用的内容不被修剪
+    anchor_protection: true
+
+    # 保护的文件模式 (glob)
+    protected_patterns:
+      - "anchors.md"
+      - "requirements.md"
+      - "design.md"
+      - "interfaces.md"
+      - "*.lock"
+      - "*.toml"
+
+  # ===================
+  # 截断配置
+  # ===================
+  truncation:
+    # Grep 输出最大 tokens
+    grep_max_tokens: 50000
+
+    # Grep 保留剩余空间比例
+    grep_headroom: 0.5
+
+    # Glob 最大文件数
+    glob_max_files: 200
+
+    # 大文件分块读取行数
+    read_chunk_size: 1000
+
+    # 搜索结果保留数量
+    search_results_limit: 50
+
+  # ===================
+  # AI辅助策略
+  # ===================
+  ai_assisted:
+    # 是否启用内观悟空的主动丢弃
+    discard_enabled: true
+
+    # 是否需要用户确认 (false = 自动执行)
+    require_confirmation: false
+
+    # 建议丢弃时的最小节约 tokens
+    min_savings_threshold: 500
+
+  # ===================
+  # 错误清理配置
+  # ===================
+  error_purge:
+    # 多少轮后清理失败工具的输入
+    turns_before_purge: 4
+
+    # 是否保留错误信息 (用于学习)
+    keep_error_message: true
+
+  # ===================
+  # 触发阈值
+  # ===================
+  thresholds:
+    # 黄灯: 提醒还有空间
+    yellow: 0.70
+
+    # 橙灯: 自动执行 DCP
+    orange: 0.85
+
+    # 红灯: 强制存档
+    red: 0.95
+
+  # ===================
+  # 报告配置
+  # ===================
+  reporting:
+    # 是否生成 DCP 报告
+    generate_report: true
+
+    # 报告存储位置
+    report_path: ".wukong/context/current/dcp-report.md"
