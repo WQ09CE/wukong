@@ -1,63 +1,129 @@
 # Wukong 🐵
 
-> A Multi-Agent Orchestration Framework for Claude Code.
-> 
-> "Every task is a journey to the West. You don't just write code; you conquer challenges."
+> 悟空多分身工作流 - Claude Code 的多智能体编排框架
+>
+> "需求即取经路，代码即降妖伏魔。"
 
-**Wukong** is a specialized framework designed to turn Claude Code into a high-performance engineering team. It transforms the single agent into an orchestrator that manages specialized avatars (Subagents) for different tasks.
+**Wukong** 将 Claude Code 转化为高效的工程团队。本体专注用户交互，六根分身并行执行专业任务。
 
 ## 🌟 Features
 
-- **Dynamic Workflow Tracks**: Automatically switches between Feature (Waterfall), Fix (Surgical), and Refactor modes.
-- **Role-Based Avatars**:
-  - 🐵 **Wukong (Body)**: Orchestrator, user interaction.
-  - 📝 **Req Wukong**: Requirements analyst.
-  - 🏗️ **Arch Wukong**: System architect.
-  - ⚔️ **Battle Wukong (斗战胜佛)**: The elite implementer.
-  - 🔍 **Explore Wukong**: Codebase scout.
-  - 🧪 **Test Wukong**: QA engineer.
-- **Parallel Execution**: High-throughput patterns like "Scout & Infantry" and "TDD Pincer".
-- **Strict Verification**: "Avatars can lie." - Mandatory proof of work (Build/Test/Lint).
+### 六根分身系统
+
+> **六根**源自佛教，指眼、耳、鼻、舌、身、意六种感知器官。
+
+| 六根 | 分身 | 能力 |
+|------|------|------|
+| 👁️ 眼 | 眼分身 | 探索·搜索 |
+| 👂 耳 | 耳分身 | 需求·理解 |
+| 👃 鼻 | 鼻分身 | 审查·检测 |
+| 👅 舌 | 舌分身 | 测试·文档 |
+| ⚔️ 身 | 斗战胜佛 | 实现·行动 |
+| 🧠 意 | 意分身 | 设计·决策 |
+| 🔮 超越 | 内观悟空 | 反思·锚点 |
+
+### 核心能力
+
+- **动态轨道**: Feature / Fix / Refactor / Direct 自动选择
+- **筋斗云并行**: 无依赖任务同时执行，最大 3-4 个分身
+- **规则分层**: 精简规则启动加载 (98行)，详细规则按需读取
+- **如意金箍棒**: 上下文管理，显式命令触发
+- **验证金规**: "分身可能说谎" - 必须亲自验证
 
 ## 🚀 Installation
 
-### Option 1: Automatic Install (Mac/Linux)
-
-Run this command in your project root (it downloads the `.wukong` bundle automatically):
+### 自动安装 (Mac/Linux)
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/WQ09CE/wukong/main/install.sh)"
 ```
 
-### Option 2: Manual Install
+### 安装到指定项目
 
-1. Download this repository.
-2. Copy the `.wukong` folder to your project root.
-3. Create `.claude/rules` if it doesn't exist.
-4. Symlink or copy `.wukong/rules/*.md` into `.claude/rules/`.
+```bash
+git clone https://github.com/WQ09CE/wukong.git
+cd wukong
+./install.sh /path/to/your/project
+```
 
 ## 📂 Structure
 
+安装后的目录结构：
+
 ```
-.
-├── .claude/
-│   └── rules/           # Active behaviors loaded by Claude
-│       ├── 00-wukong-core.md
-│       └── ...
-├── .wukong/             # Knowledge base & Templates
-│   ├── skills/          # Detailed persona guides
-│   ├── templates/       # Markdown templates (design docs, etc.)
-│   ├── plans/           # Execution plans
-│   └── notepads/        # Scratchpads for avatars
+your-project/
+├── .claude/                      # Claude Code 运行时
+│   ├── rules/                    # 精简核心规则 (启动加载)
+│   │   └── 00-wukong-core.md
+│   ├── rules-extended/           # 扩展规则 (按需加载)
+│   │   ├── avatars.md
+│   │   ├── orchestration.md
+│   │   ├── verification.md
+│   │   ├── wisdom.md
+│   │   └── ruyi.md
+│   ├── skills/                   # 分身技能 (召唤时加载)
+│   │   ├── explorer.md
+│   │   ├── architect.md
+│   │   ├── implementer.md
+│   │   └── ...
+│   └── commands/
+│       └── wukong.md             # /wukong 命令入口
+│
+└── .wukong/                      # 工作数据
+    ├── context/                  # 上下文管理
+    │   ├── sessions/             # 会话存档
+    │   └── templates/
+    ├── notepads/                 # 知识笔记本
+    ├── plans/                    # 执行计划
+    └── templates/                # 模板文件
 ```
 
 ## 🎮 Usage
 
-Just talk to Claude Code naturally. Wukong will intercept and classify your intent.
+### 基本使用
 
-- **New Feature**: "I want to add a user login system." (Triggers Feature Track)
-- **Bug Fix**: "Fix the crash in the payment module." (Triggers Fix Track)
-- **Refactoring**: "Clean up the legacy auth code." (Triggers Refactor Track)
+```
+/wukong 你好                    # 激活悟空
+/wukong 添加用户登录功能         # Feature Track
+/wukong 修复支付模块崩溃         # Fix Track
+/wukong 重构遗留的认证代码       # Refactor Track
+```
+
+### 上下文管理命令
+
+| 命令 | 动作 |
+|------|------|
+| `/wukong 内观` | 反思 + 提取锚点 + 三态摘要 |
+| `/wukong 压缩` | 生成缩形态摘要 (<500字) |
+| `/wukong 存档` | 保存到 `.wukong/context/sessions/` |
+| `/wukong 加载 {name}` | 恢复历史会话 |
+| `/wukong 锚点` | 显示关键决策/约束 |
+
+### 三态形态
+
+- 🔶 **巨形态** - 完整详细信息
+- 🔹 **常形态** - 结构化摘要
+- 🔸 **缩形态** - 核心要点 (跨会话传递用)
+
+## 🔧 Customization
+
+### 添加自定义技能
+
+在 `.claude/skills/` 下创建新的 `.md` 文件，悟空会自动发现：
+
+```markdown
+# My Custom Skill
+
+You are **自定义分身** - ...
+
+## Capabilities
+...
+```
+
+### 修改核心规则
+
+- 精简规则: `.claude/rules/00-wukong-core.md`
+- 扩展规则: `.claude/rules-extended/*.md`
 
 ## 📜 License
 
