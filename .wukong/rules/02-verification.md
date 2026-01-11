@@ -3,8 +3,122 @@
 ## The Golden Rule (金规)
 
 > **分身可能说谎** - 它们经常声称完成了实际未完成的工作。
+> **没有证据 = 没有完成** (NO EVIDENCE = NOT DONE)
 
 你必须亲自验证一切。永远不要在没有证据的情况下接受声明。
+
+---
+
+## Evidence Levels (证据等级)
+
+> **证据是交付的通行证** - 不同等级的证据决定了能否通过 Gate。
+
+| Level | 名称 | 说明 | 可信度 |
+|-------|------|------|--------|
+| **L0** | 推测 (Speculation) | 基于经验的猜测，无任何验证 | ❌ 禁止作为结论 |
+| **L1** | 引用 (Reference) | 引用代码/路径/文档，但未执行验证 | ⚠️ 可用于方向，不能交付 |
+| **L2** | 本地验证 (Local Verification) | 本地命令/测试/构建验证通过 | ✅ 默认交付门槛 |
+| **L3** | 集成验证 (Integration Verification) | 端到端/CI/集成测试验证 | ✅✅ 关键路径建议 |
+
+### 证据等级示例
+
+```
+L0 (禁止): "这个函数应该能处理空值"
+L1 (不足): "在 utils.py:42 有空值处理" (但没运行过)
+L2 (合格): "pytest test_utils.py::test_null_handling 通过"
+L3 (优秀): "CI pipeline 全绿，含集成测试"
+```
+
+---
+
+## Track Verification Gates (轨道验证门槛)
+
+> **每条轨道有最低验证要求** - 未达到门槛不能标记 Done。
+
+| Track | 最低门槛 | 额外要求 | 说明 |
+|-------|----------|----------|------|
+| **Fix** | L2 | + 复现用例 + 回归测试 | 必须证明 bug 已修复且不会复发 |
+| **Feature** | L2 | + 覆盖 AC 的测试 | 核心流程建议 L3 |
+| **Refactor** | L2 | + 行为不变证明 | 必须有对齐基准（前后输出一致） |
+| **Direct** | L1 | - | 简单任务可降级，但仍需引用证据 |
+
+### Gate 检查清单
+
+```
+Feature Gate ✅:
+□ 所有 AC 有对应测试 (L2+)
+□ 核心路径有集成测试 (L3 建议)
+□ 无新增类型错误/lint 警告
+□ 构建通过
+
+Fix Gate ✅:
+□ 有复现用例（证明之前会失败）
+□ 修复后用例通过 (L2)
+□ 回归测试通过
+□ 无其他测试被破坏
+
+Refactor Gate ✅:
+□ 有行为基准（修改前的输出）
+□ 修改后输出与基准一致 (L2)
+□ 无功能变化
+□ 代码质量提升（可量化）
+```
+
+---
+
+## Delivery Report Template (交付报告模板)
+
+> **每次交付必须附带交付报告** - 本体或舌分身生成。
+
+```markdown
+# 交付报告: {Task Name}
+
+## 基本信息
+- **轨道**: Feature / Fix / Refactor / Direct
+- **证据等级**: L2 / L3
+- **日期**: {date}
+
+## AC Checklist
+- [x] AC-1: {描述} → 证据: `pytest tests/test_x.py::test_ac1 ✅`
+- [x] AC-2: {描述} → 证据: `{command} ✅`
+- [ ] AC-3: {描述} → ⚠️ 未完成，原因: {reason}
+
+## 验证命令与输出
+
+### 构建验证
+```bash
+$ cmake --build build
+# 输出: Build finished successfully
+```
+
+### 测试验证
+```bash
+$ pytest -v tests/
+# 输出: 15 passed, 0 failed
+```
+
+### 类型检查 (如适用)
+```bash
+$ mypy src/
+# 输出: Success: no issues found
+```
+
+## 风险点
+- {risk 1}: {mitigation}
+- {risk 2}: {mitigation}
+
+## 回滚方式
+```bash
+# 如需回滚:
+git revert {commit_hash}
+# 或手动步骤:
+1. {step 1}
+2. {step 2}
+```
+
+## 遗留问题 (如有)
+- [ ] {issue 1} - 后续处理
+```
 
 ## 批次完成验证 (Batch Completion Verification)
 

@@ -147,20 +147,71 @@
 | 问题 | P | 已知问题/陷阱 | [P001] FFmpeg 在某格式下泄漏内存 |
 | 偏好 | U | 用户偏好 | [U001] 用户偏好简洁回复 |
 
-### 锚点格式
+### 锚点格式 (ADR 架构决策记录)
+
+> **锚点 = ADR** - 每个锚点都是一条可复用的工程决策记录，包含完整的决策上下文。
+
+**必须字段**（即使缩形态也要保留）:
+
+| 字段 | 必须 | 说明 |
+|------|------|------|
+| Decision | ✅ | 做了什么决定 |
+| Alternatives | ✅ | 考虑过的备选方案 |
+| Why | ✅ | 选择的理由 |
+| Impact | ✅ | 影响范围（哪些模块/功能受影响） |
+| Verification | ✅ | 如何验证这个决策是正确的 |
+| Rollback | ✅ | 如果需要回滚，怎么做 |
+
+**完整格式模板**:
 
 ```markdown
 ## [D001] 使用 Ollama 作为本地 LLM
 
-**时间**: 2024-01-15
-**背景**: 需要选择代码审查的 LLM 后端
-**选项**:
-- OpenAI API (强但贵)
-- Ollama 本地 (免费但需部署)
-- Claude API (强但有合规考虑)
-**决定**: Ollama
-**原因**: 成本低、数据本地化、隐私合规
-**影响**: 需要维护 Ollama 容器
+**ID**: D001
+**日期**: 2024-01-15
+**状态**: ✅ 生效 / ⚠️ 待验证 / ❌ 已废弃
+
+### Decision (决策)
+使用 Ollama 作为代码审查的本地 LLM 后端。
+
+### Alternatives (备选方案)
+| 方案 | 优点 | 缺点 |
+|------|------|------|
+| OpenAI API | 能力强 | 成本高、数据出境 |
+| Ollama 本地 | 免费、数据本地 | 需要部署维护 |
+| Claude API | 能力强 | 合规考虑 |
+
+### Why (理由)
+1. 成本: 本地运行零 API 费用
+2. 隐私: 代码数据不出本地
+3. 合规: 满足企业数据安全要求
+
+### Impact (影响范围)
+- `src/llm/`: LLM 接口模块
+- `docker-compose.yaml`: 需要添加 Ollama 容器
+- 部署流程: 需要 GPU 支持
+
+### Verification (验证方式)
+```bash
+# 验证 Ollama 正常工作
+curl http://localhost:11434/api/generate -d '{"model": "codellama"}'
+# 验证审查功能
+pytest tests/test_review.py -v
+```
+
+### Rollback (回滚方式)
+1. 修改 `src/llm/config.py` 切换回 OpenAI
+2. 删除 docker-compose 中的 Ollama 服务
+3. 设置环境变量 `LLM_BACKEND=openai`
+```
+
+**缩形态格式** (压缩时使用):
+
+```markdown
+[D001] Ollama 作为本地 LLM
+- Why: 成本低、数据本地化、隐私合规
+- Impact: src/llm/, docker-compose
+- Rollback: 改 LLM_BACKEND=openai
 ```
 
 ### 锚点存储
