@@ -28,6 +28,7 @@ if [ -z "$TARGET_DIR" ]; then
 fi
 
 mkdir -p "$TARGET_DIR/.claude/rules"
+mkdir -p "$TARGET_DIR/.claude/commands"
 mkdir -p "$TARGET_DIR/.wukong"
 
 echo -e "Installing Wukong to ${GREEN}$TARGET_DIR${NC}..."
@@ -36,6 +37,9 @@ cp -R .wukong/* "$TARGET_DIR/.wukong/"
 
 echo "Activating Wukong Rules..."
 cp .wukong/rules/*.md "$TARGET_DIR/.claude/rules/"
+
+echo "Activating Wukong Commands..."
+cp .wukong/commands/*.md "$TARGET_DIR/.claude/commands/"
 
 mkdir -p "$TARGET_DIR/.wukong/notepads"
 mkdir -p "$TARGET_DIR/.wukong/plans"
