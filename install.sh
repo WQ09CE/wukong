@@ -41,12 +41,10 @@ fi
 mkdir -p "$TARGET_DIR/.claude/rules"
 mkdir -p "$TARGET_DIR/.claude/commands"
 mkdir -p "$TARGET_DIR/.claude/skills"
-mkdir -p "$TARGET_DIR/.wukong"
 
 echo -e "Installing Wukong to ${GREEN}$TARGET_DIR${NC}..."
 
-cp -R "$SOURCE_DIR"/. "$TARGET_DIR/.wukong/"
-
+# 复制规则到 .claude (Claude Code 运行时目录)
 echo "Activating Wukong Rules..."
 cp "$SOURCE_DIR"/rules/*.md "$TARGET_DIR/.claude/rules/"
 
@@ -56,14 +54,38 @@ cp "$SOURCE_DIR"/commands/*.md "$TARGET_DIR/.claude/commands/"
 echo "Activating Wukong Skills..."
 cp "$SOURCE_DIR"/skills/*.md "$TARGET_DIR/.claude/skills/"
 
+# 只创建必要的工作目录 (笔记本、计划、上下文、模板)
 mkdir -p "$TARGET_DIR/.wukong/notepads"
 mkdir -p "$TARGET_DIR/.wukong/plans"
+mkdir -p "$TARGET_DIR/.wukong/context/current"
+mkdir -p "$TARGET_DIR/.wukong/context/sessions"
+
+# 复制模板文件 (如果存在)
+if [ -d "$SOURCE_DIR/templates" ]; then
+    mkdir -p "$TARGET_DIR/.wukong/templates"
+    cp -R "$SOURCE_DIR"/templates/. "$TARGET_DIR/.wukong/templates/"
+fi
+
+# 复制上下文模板 (如果存在)
+if [ -d "$SOURCE_DIR/context/templates" ]; then
+    mkdir -p "$TARGET_DIR/.wukong/context/templates"
+    cp -R "$SOURCE_DIR"/context/templates/. "$TARGET_DIR/.wukong/context/templates/"
+fi
+
+# 初始化锚点文件
+if [ ! -f "$TARGET_DIR/.wukong/context/anchors.md" ]; then
+    echo "# Anchors (锚点)" > "$TARGET_DIR/.wukong/context/anchors.md"
+    echo "" >> "$TARGET_DIR/.wukong/context/anchors.md"
+    echo "Global anchors for this project." >> "$TARGET_DIR/.wukong/context/anchors.md"
+fi
 
 echo -e "${GREEN}✅ Wukong Protocol successfully installed!${NC}"
 echo -e "Structure created:"
-echo -e "  - $TARGET_DIR/.wukong/"
-echo -e "  - $TARGET_DIR/.claude/rules/"
-echo -e "  - $TARGET_DIR/.claude/skills/"
-echo -e "  - $TARGET_DIR/.claude/commands/"
+echo -e "  - $TARGET_DIR/.claude/rules/      (Claude Code 规则)"
+echo -e "  - $TARGET_DIR/.claude/skills/     (分身技能)"
+echo -e "  - $TARGET_DIR/.claude/commands/   (命令)"
+echo -e "  - $TARGET_DIR/.wukong/notepads/   (知识笔记本)"
+echo -e "  - $TARGET_DIR/.wukong/context/    (上下文管理)"
+echo -e "  - $TARGET_DIR/.wukong/templates/  (模板文件)"
 echo ""
 echo -e "Start Claude Code and say: 'Hello Wukong'"
