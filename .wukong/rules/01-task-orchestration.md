@@ -74,58 +74,203 @@
 - [避免的技术债]
 ```
 
-## Parallel Execution Strategy (并行执行策略)
+## Parallel Execution Strategy (筋斗云并行策略)
 
-### High-Throughput Patterns
+> **筋斗云**: 一个筋斗十万八千里。分身术的精髓在于**同时出击**，而非排队等候。
 
-**1. The "Scout & Infantry" Pattern (Explore + Implement)**
-*Use when:* You are implementing a feature but need to look up references constantly.
-```typescript
-Task(agent="implementer", prompt="Implement class A...")
-Task(agent="explorer", prompt="Find usage examples of API X...", background=true)
-```
-
-**2. The "TDD Pincer" Pattern (Test + Implement)**
-*Use when:* The interface/signature is already defined (e.g., in a design doc or header file).
-```typescript
-// Parallel Attack
-Task(agent="tester", prompt="Write tests for Interface I...", background=true)
-Task(agent="implementer", prompt="Implement Interface I...", background=true)
-// Merge: Wait for both, then run tests.
-```
-
-**3. The "Swarm" Pattern (Mass Refactoring)**
-*Use when:* Renaming or migrating multiple independent files.
-```typescript
-Task(agent="implementer", prompt="Migrate File A...", background=true)
-Task(agent="implementer", prompt="Migrate File B...", background=true)
-Task(agent="implementer", prompt="Migrate File C...", background=true)
-```
-
-### When to Parallelize
+### The Parallelization Decision Tree (并行决策树)
 
 ```
-✓ PARALLEL (可以并行):
-  - 不同模块的探索
-  - 不同文件的审查
-  - 独立的测试用例
-  - 斗战胜佛 + 探索悟空 (实现时并行探索)
-
-✗ SEQUENTIAL (必须串行):
-  - 需求悟空 → 架构悟空 → 斗战胜佛 → 测试悟空 → 审查悟空
-  - 编辑同一文件
-  - 测试依赖前置改动
+开始任务分析
+     │
+     ▼
+┌─────────────────────────────────────────┐
+│ Q1: 任务可以分解为多个独立子任务吗？        │
+└─────────────────────────────────────────┘
+     │
+     ├── NO → 单分身串行执行
+     │
+     ▼ YES
+┌─────────────────────────────────────────┐
+│ Q2: 子任务之间有数据依赖吗？               │
+│     (一个的输出是另一个的输入)              │
+└─────────────────────────────────────────┘
+     │
+     ├── YES → 按依赖顺序串行
+     │
+     ▼ NO
+┌─────────────────────────────────────────┐
+│ Q3: 子任务会修改同一个文件吗？             │
+└─────────────────────────────────────────┘
+     │
+     ├── YES → 串行执行（避免冲突）
+     │
+     ▼ NO
+┌─────────────────────────────────────────┐
+│ ✅ 可以并行！召唤多个分身同时执行          │
+└─────────────────────────────────────────┘
 ```
 
-### Parallel Execution Pattern
+### Parallelization Patterns (并行模式)
 
-```typescript
-// Launch multiple independent avatars in ONE message
-Task(subagent_type="Explore", prompt="探索模块A", run_in_background=true)
-Task(subagent_type="Explore", prompt="探索模块B", run_in_background=true)
-Task(subagent_type="general-purpose", prompt="研究外部API", run_in_background=true)
+#### Pattern 1: **分身群攻** (Multi-Module Implementation)
+**场景**: 实现多个独立模块（无相互依赖）
+**加速比**: 理论 Nx（N = 模块数）
 
-// Continue with other work while avatars run
+```
+设计完成后:
+     │
+     ├──→ [斗战胜佛 A] 实现 module_a.py  ──┐
+     ├──→ [斗战胜佛 B] 实现 module_b.py  ──┼──→ 合并验证
+     └──→ [斗战胜佛 C] 实现 module_c.py  ──┘
+
+# 召唤方式 (在同一条消息中发送多个 Task)
+Task(subagent_type="general-purpose", prompt="实现 module_a", run_in_background=true)
+Task(subagent_type="general-purpose", prompt="实现 module_b", run_in_background=true)
+Task(subagent_type="general-purpose", prompt="实现 module_c", run_in_background=true)
+```
+
+#### Pattern 2: **侦察兵 + 主力军** (Scout & Infantry)
+**场景**: 实现功能时需要不断查阅参考
+**加速比**: 减少等待时间
+
+```
+开始实现:
+     │
+     ├──→ [探索悟空] 研究相关 API 和模式 (后台)
+     │         │
+     │         └──→ 持续提供参考信息
+     │
+     └──→ [斗战胜佛] 开始实现代码
+               │
+               └──→ 遇到不确定时，从探索悟空获取答案
+
+# 召唤方式
+Task(subagent_type="Explore", prompt="研究 X 库的用法和最佳实践", run_in_background=true)
+Task(subagent_type="general-purpose", prompt="实现 Y 功能，参考探索悟空的发现")
+```
+
+#### Pattern 3: **TDD 钳形攻势** (Test + Implement Pincer)
+**场景**: 接口已明确定义（设计文档/头文件）
+**加速比**: ~2x
+
+```
+接口定义完成:
+     │
+     ├──→ [测试悟空] 根据接口编写测试 (后台)
+     │
+     └──→ [斗战胜佛] 实现接口 (后台)
+               │
+               ▼
+          [合并] → 运行测试 → 验证
+
+# 召唤方式
+Task(subagent_type="general-purpose", prompt="根据接口定义编写测试", run_in_background=true)
+Task(subagent_type="general-purpose", prompt="实现接口", run_in_background=true)
+# 等待两者完成后运行测试
+```
+
+#### Pattern 4: **代码 + 配置并行** (Code + Config Parallel)
+**场景**: 实现代码的同时准备部署配置
+**加速比**: ~1.5x
+
+```
+设计完成后:
+     │
+     ├──→ [斗战胜佛] 实现核心代码
+     │
+     └──→ [架构悟空] 准备 Dockerfile / CI 配置 (后台)
+               │
+               └──→ 容器配置不依赖具体实现细节
+
+# 召唤方式
+Task(subagent_type="general-purpose", prompt="实现核心功能代码")
+Task(subagent_type="general-purpose", prompt="准备 Dockerfile 和 docker-compose", run_in_background=true)
+```
+
+#### Pattern 5: **蜂群模式** (Swarm - Mass Operations)
+**场景**: 批量重构/迁移多个独立文件
+**加速比**: ~Nx
+
+```
+重构计划确定后:
+     │
+     ├──→ [斗战胜佛 A] 重构 file_1.py  ──┐
+     ├──→ [斗战胜佛 B] 重构 file_2.py  ──┤
+     ├──→ [斗战胜佛 C] 重构 file_3.py  ──┼──→ 合并
+     └──→ [斗战胜佛 D] 重构 file_4.py  ──┘
+
+# 召唤方式 (限制同时 3-4 个分身)
+Task(subagent_type="general-purpose", prompt="重构 file_1", run_in_background=true)
+Task(subagent_type="general-purpose", prompt="重构 file_2", run_in_background=true)
+Task(subagent_type="general-purpose", prompt="重构 file_3", run_in_background=true)
+```
+
+### Parallelization Rules (并行规则)
+
+#### ✅ 可以并行的场景
+
+| 场景 | 模式 | 最大并行数 |
+|------|------|-----------|
+| 实现多个独立模块 | 分身群攻 | 3-4 |
+| 实现 + 探索参考 | 侦察兵+主力军 | 2 |
+| 实现 + 写测试 (接口已定) | TDD钳形攻势 | 2 |
+| 代码 + 部署配置 | 代码+配置并行 | 2 |
+| 批量文件修改 | 蜂群模式 | 3-4 |
+| 多文件代码审查 | 审查分身群 | 3-4 |
+| 多模块代码探索 | 探索分身群 | 3-4 |
+
+#### ❌ 必须串行的场景
+
+| 场景 | 原因 |
+|------|------|
+| 需求 → 架构 → 实现 | 依赖上游输出 |
+| 修改同一文件的多个任务 | 会产生冲突 |
+| 测试依赖未完成的代码 | 会失败 |
+| 需要用户确认的决策点 | 阻塞等待 |
+
+### Parallel Execution Syntax (并行召唤语法)
+
+**关键**: 在**同一条消息**中发送多个 Task 调用
+
+```python
+# ✅ 正确: 同一消息中多个 Task (并行执行)
+<message>
+Task(subagent_type="general-purpose", prompt="任务A", run_in_background=true)
+Task(subagent_type="general-purpose", prompt="任务B", run_in_background=true)
+Task(subagent_type="general-purpose", prompt="任务C", run_in_background=true)
+</message>
+
+# ❌ 错误: 分开发送 (串行执行)
+<message>Task(...任务A...)</message>
+<message>Task(...任务B...)</message>
+<message>Task(...任务C...)</message>
+```
+
+### Resource Management (资源管理)
+
+```
+并行分身限制:
+├── 最大同时运行: 3-4 个分身
+├── 后台探索: 不计入限制
+└── 超过限制时: 批次执行
+
+示例 (8个独立模块):
+├── 第一批: 模块 1, 2, 3, 4 (并行)
+├── 等待完成
+└── 第二批: 模块 5, 6, 7, 8 (并行)
+```
+
+### Merge Protocol (合并协议)
+
+并行任务完成后:
+
+```
+1. 收集所有分身的输出
+2. 检查是否有冲突
+3. 如有冲突 → 手动解决
+4. 运行完整验证 (构建 + 测试)
+5. 确认无误后继续
 ```
 
 ## Domain-Specific Patterns
