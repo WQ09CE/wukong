@@ -23,7 +23,7 @@
 
 ### Option 1: Automatic Install (Mac/Linux)
 
-Run this command in your project root:
+Run this command in your project root (it downloads the `.wukong` bundle automatically):
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/WQ09CE/wukong/main/install.sh)"

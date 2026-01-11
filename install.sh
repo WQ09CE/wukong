@@ -12,12 +12,23 @@ PROJECT_ROOT=$(pwd)
 CLAUDE_DIR="$PROJECT_ROOT/.claude"
 RULES_DIR="$CLAUDE_DIR/rules"
 WUKONG_DIR="$PROJECT_ROOT/.wukong"
-SOURCE_DIR="$(dirname "$0")/.wukong"
+SOURCE_DIR=""
 
-if [ ! -d ".wukong" ]; then
-    echo "Error: Run this script from the root of the wukong repository."
-    echo "Usage: ./install.sh <target-project-path>"
-    exit 1
+if [ -d "$PROJECT_ROOT/.wukong" ]; then
+    SOURCE_DIR="$PROJECT_ROOT/.wukong"
+else
+    TEMP_DIR=$(mktemp -d)
+    trap 'rm -rf "$TEMP_DIR"' EXIT
+
+    echo "Fetching Wukong rules..."
+    curl -fsSL "https://github.com/WQ09CE/wukong/archive/refs/heads/main.tar.gz" | tar -xz -C "$TEMP_DIR"
+    SOURCE_DIR="$TEMP_DIR/wukong-main/.wukong"
+
+    if [ ! -d "$SOURCE_DIR" ]; then
+        echo "Error: Failed to fetch Wukong rules from GitHub."
+        echo "Usage: ./install.sh <target-project-path>"
+        exit 1
+    fi
 fi
 
 TARGET_DIR="$1"
@@ -33,10 +44,10 @@ mkdir -p "$TARGET_DIR/.wukong"
 
 echo -e "Installing Wukong to ${GREEN}$TARGET_DIR${NC}..."
 
-cp -R .wukong/* "$TARGET_DIR/.wukong/"
+cp -R "$SOURCE_DIR"/. "$TARGET_DIR/.wukong/"
 
 echo "Activating Wukong Rules..."
-cp .wukong/rules/*.md "$TARGET_DIR/.claude/rules/"
+cp "$SOURCE_DIR"/rules/*.md "$TARGET_DIR/.claude/rules/"
 
 echo "Activating Wukong Commands..."
 cp .wukong/commands/*.md "$TARGET_DIR/.claude/commands/"
