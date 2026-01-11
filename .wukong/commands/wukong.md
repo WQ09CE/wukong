@@ -52,7 +52,45 @@ Glob(".claude/skills/*.md")
 2. 查找对应的 skill 文件
 3. 如果没有预定义的 skill，可以使用毫毛分身（临时定制）
 
+## Explicit Avatar Syntax (显式分身指定)
+
+> 使用 `@` 语法可以**绕过轨道选择**，直接指定分身执行任务。
+
+**语法格式：**
+```
+/wukong @{分身} {任务描述}
+```
+
+**@ 标记映射表：**
+
+| @ 标记 | 分身 | 英文别名 | 示例 |
+|--------|------|----------|------|
+| `@眼` | 眼分身 | `@explorer` | `/wukong @眼 探索认证模块` |
+| `@耳` | 耳分身 | `@analyst` | `/wukong @耳 分析这个需求` |
+| `@鼻` | 鼻分身 | `@reviewer` | `/wukong @鼻 审查这个 PR` |
+| `@舌` | 舌分身 | `@tester` | `/wukong @舌 编写单元测试` |
+| `@身` | 斗战胜佛 | `@impl` | `/wukong @身 实现登录接口` |
+| `@斗战胜佛` | 斗战胜佛 | `@implementer` | `/wukong @斗战胜佛 修复这个bug` |
+| `@意` | 意分身 | `@architect` | `/wukong @意 设计缓存方案` |
+| `@内观` | 内观悟空 | `@reflect` | `/wukong @内观 反思这个任务` |
+
+**解析优先级：**
+```
+1. 检查是否有 @ 标记
+   ├── 有 → 直接召唤指定分身，跳过轨道选择
+   └── 无 → 进入轨道选择流程
+```
+
+**使用场景：**
+- 你明确知道需要哪个分身
+- 想绕过默认的工作流
+- 单独调用某个专业能力
+
+---
+
 ## Track Selection (动态轨道选择)
+
+> 当没有 `@` 显式指定时，根据任务类型自动选择轨道。
 
 | Track | Trigger | Flow |
 |-------|---------|------|
@@ -123,12 +161,31 @@ Task(
 
 ## Starting the Workflow
 
-Now, analyze the user's request and:
+Now, analyze the user's request:
 
-1. **Discover** available skills
-2. Determine the appropriate **Track**
-3. Select the right **六根分身**
-4. Begin the workflow
+```
+解析流程:
+1. 检查 @ 标记
+   ├── 匹配到 @眼/@explorer     → 直接召唤眼分身
+   ├── 匹配到 @耳/@analyst      → 直接召唤耳分身
+   ├── 匹配到 @鼻/@reviewer     → 直接召唤鼻分身
+   ├── 匹配到 @舌/@tester       → 直接召唤舌分身
+   ├── 匹配到 @身/@斗战胜佛/@impl/@implementer → 直接召唤斗战胜佛
+   ├── 匹配到 @意/@architect    → 直接召唤意分身
+   ├── 匹配到 @内观/@reflect    → 直接召唤内观悟空
+   └── 无匹配 → 继续步骤 2
+
+2. 轨道选择 (Track Selection)
+   ├── Feature 关键词 → Feature Track
+   ├── Fix 关键词     → Fix Track
+   ├── Refactor 关键词 → Refactor Track
+   └── 其他           → Direct Track
+
+3. 召唤分身并执行任务
+```
 
 If no specific task was provided, respond:
-"悟空就绪！请告诉我你需要什么帮助？我会根据任务类型选择合适的六根分身来协助你。"
+"悟空就绪！请告诉我你需要什么帮助？
+
+**显式指定分身:** `/wukong @意 设计xxx` 或 `/wukong @眼 探索xxx`
+**自动轨道选择:** `/wukong 添加用户登录功能`"

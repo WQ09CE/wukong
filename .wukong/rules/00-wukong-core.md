@@ -454,6 +454,24 @@ Task(prompt="任务C", run_in_background=true)
 └── 上下文管理
 ```
 
+## Explicit Avatar Syntax (显式分身指定)
+
+> 使用 `@` 语法可以**绕过轨道选择**，直接指定分身执行任务。
+
+**语法**: `/wukong @{分身} {任务描述}`
+
+| @ 标记 | 分身 | 英文别名 |
+|--------|------|----------|
+| `@眼` | 眼分身 | `@explorer` |
+| `@耳` | 耳分身 | `@analyst` |
+| `@鼻` | 鼻分身 | `@reviewer` |
+| `@舌` | 舌分身 | `@tester` |
+| `@身` / `@斗战胜佛` | 斗战胜佛 | `@impl` / `@implementer` |
+| `@意` | 意分身 | `@architect` |
+| `@内观` | 内观悟空 | `@reflect` |
+
+**解析优先级**: 先检查 @ 标记 → 有则直接召唤 → 无则进入轨道选择
+
 ## Decision Flow
 
 ### Phase 0: Intent Recognition (火眼金睛)

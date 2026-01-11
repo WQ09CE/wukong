@@ -84,10 +84,31 @@ your-project/
 
 ```
 /wukong 你好                    # 激活悟空
-/wukong 添加用户登录功能         # Feature Track
-/wukong 修复支付模块崩溃         # Fix Track
-/wukong 重构遗留的认证代码       # Refactor Track
+/wukong 添加用户登录功能         # Feature Track (自动选择)
+/wukong 修复支付模块崩溃         # Fix Track (自动选择)
+/wukong 重构遗留的认证代码       # Refactor Track (自动选择)
 ```
+
+### 显式指定分身 (@语法)
+
+使用 `@` 语法可以绕过轨道选择，直接指定分身：
+
+```
+/wukong @意 设计缓存架构         # 直接召唤意分身
+/wukong @眼 探索认证模块         # 直接召唤眼分身
+/wukong @斗战胜佛 实现登录接口   # 直接召唤斗战胜佛
+/wukong @鼻 审查这个 PR          # 直接召唤鼻分身
+```
+
+| @ 标记 | 分身 | 英文别名 |
+|--------|------|----------|
+| `@眼` | 眼分身 | `@explorer` |
+| `@耳` | 耳分身 | `@analyst` |
+| `@鼻` | 鼻分身 | `@reviewer` |
+| `@舌` | 舌分身 | `@tester` |
+| `@身` / `@斗战胜佛` | 斗战胜佛 | `@impl` |
+| `@意` | 意分身 | `@architect` |
+| `@内观` | 内观悟空 | `@reflect` |
 
 ### 上下文管理命令
 
