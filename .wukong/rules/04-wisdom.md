@@ -14,7 +14,8 @@
 ├── decisions.md       # 决策记录
 ├── issues.md          # 问题跟踪
 ├── review.md          # 审查结果
-└── verification.md    # 验证记录
+├── verification.md    # 验证记录
+└── breakthroughs.md   # 技术突破记录 (Eureka!)
 ```
 
 ## Reading Wisdom (读取知识)
@@ -127,6 +128,75 @@ Format:
 ## 注意事项
 - {gotcha 1}
 - {gotcha 2}
+```
+
+### breakthroughs.md (技术突破记录)
+
+> 基于 feiskyer/claude-code-settings 的 eureka 技能内化。
+> **捕获技术突破，转化为可复用的知识资产。**
+
+Record when you achieve:
+- 攻克了困扰已久的难题
+- 发现了意外的解决方案
+- 找到了显著的性能优化
+- 实现了创新的设计模式
+
+**触发信号**:
+- "终于搞定了！"
+- "原来是这样！"
+- 解决了阻塞超过 1 小时的问题
+- 性能提升 > 50%
+
+Format:
+```markdown
+# 技术突破记录: {Plan Name}
+
+## {Date} - {Breakthrough Title}
+
+### 一句话总结
+{one-line summary of achievement}
+
+### 问题描述
+{what was blocking progress}
+
+### 核心洞察
+{the key insight that unlocked the solution}
+
+### 实现方案
+```{language}
+{minimal working code example}
+```
+
+### 效果对比
+| 指标 | 改进前 | 改进后 |
+|------|--------|--------|
+| {metric} | {before} | {after} |
+
+### 可复用模式
+{abstracted pattern that can be applied elsewhere}
+
+### 相关资源
+- {reference 1}
+- {reference 2}
+
+### 标签
+#performance #debugging #architecture #...
+```
+
+**Eureka 工作流：**
+
+```
+1. 突破发生时立即记录
+   └─ 不要等到任务结束，趁热打铁
+
+2. 提取可复用模式
+   └─ 将具体解决方案抽象为通用模式
+
+3. 添加可搜索标签
+   └─ 便于后续检索
+
+4. 定期回顾
+   └─ 将突破整合到代码库规范中
 ```
 
 ### decisions.md (决策记录)
