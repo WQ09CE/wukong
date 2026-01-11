@@ -39,14 +39,26 @@ if [ -z "$TARGET_DIR" ]; then
 fi
 
 mkdir -p "$TARGET_DIR/.claude/rules"
+mkdir -p "$TARGET_DIR/.claude/rules-extended"
 mkdir -p "$TARGET_DIR/.claude/commands"
 mkdir -p "$TARGET_DIR/.claude/skills"
 
 echo -e "Installing Wukong to ${GREEN}$TARGET_DIR${NC}..."
 
-# 复制规则到 .claude (Claude Code 运行时目录)
-echo "Activating Wukong Rules..."
-cp "$SOURCE_DIR"/rules/*.md "$TARGET_DIR/.claude/rules/"
+# 复制精简规则到 .claude/rules (启动时加载)
+echo "Activating Wukong Core Rules (lite)..."
+if [ -d "$SOURCE_DIR/rules-lite" ]; then
+    cp "$SOURCE_DIR"/rules-lite/*.md "$TARGET_DIR/.claude/rules/"
+else
+    # 兼容旧版：如果没有 rules-lite，使用原规则
+    cp "$SOURCE_DIR"/rules/*.md "$TARGET_DIR/.claude/rules/"
+fi
+
+# 复制扩展规则到 .claude/rules-extended (按需加载)
+echo "Installing Extended Rules (on-demand)..."
+if [ -d "$SOURCE_DIR/rules-extended" ]; then
+    cp "$SOURCE_DIR"/rules-extended/*.md "$TARGET_DIR/.claude/rules-extended/"
+fi
 
 echo "Activating Wukong Commands..."
 cp "$SOURCE_DIR"/commands/*.md "$TARGET_DIR/.claude/commands/"
@@ -81,11 +93,10 @@ fi
 
 echo -e "${GREEN}✅ Wukong Protocol successfully installed!${NC}"
 echo -e "Structure created:"
-echo -e "  - $TARGET_DIR/.claude/rules/      (Claude Code 规则)"
-echo -e "  - $TARGET_DIR/.claude/skills/     (分身技能)"
-echo -e "  - $TARGET_DIR/.claude/commands/   (命令)"
-echo -e "  - $TARGET_DIR/.wukong/notepads/   (知识笔记本)"
-echo -e "  - $TARGET_DIR/.wukong/context/    (上下文管理)"
-echo -e "  - $TARGET_DIR/.wukong/templates/  (模板文件)"
+echo -e "  - $TARGET_DIR/.claude/rules/          (精简核心规则 - 启动加载)"
+echo -e "  - $TARGET_DIR/.claude/rules-extended/ (扩展规则 - 按需加载)"
+echo -e "  - $TARGET_DIR/.claude/skills/         (分身技能)"
+echo -e "  - $TARGET_DIR/.claude/commands/       (命令)"
+echo -e "  - $TARGET_DIR/.wukong/                (工作数据)"
 echo ""
 echo -e "Start Claude Code and say: 'Hello Wukong'"
