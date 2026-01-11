@@ -40,6 +40,7 @@ fi
 
 mkdir -p "$TARGET_DIR/.claude/rules"
 mkdir -p "$TARGET_DIR/.claude/commands"
+mkdir -p "$TARGET_DIR/.claude/skills"
 mkdir -p "$TARGET_DIR/.wukong"
 
 echo -e "Installing Wukong to ${GREEN}$TARGET_DIR${NC}..."
@@ -50,7 +51,10 @@ echo "Activating Wukong Rules..."
 cp "$SOURCE_DIR"/rules/*.md "$TARGET_DIR/.claude/rules/"
 
 echo "Activating Wukong Commands..."
-cp .wukong/commands/*.md "$TARGET_DIR/.claude/commands/"
+cp "$SOURCE_DIR"/commands/*.md "$TARGET_DIR/.claude/commands/"
+
+echo "Activating Wukong Skills..."
+cp "$SOURCE_DIR"/skills/*.md "$TARGET_DIR/.claude/skills/"
 
 mkdir -p "$TARGET_DIR/.wukong/notepads"
 mkdir -p "$TARGET_DIR/.wukong/plans"
@@ -59,5 +63,7 @@ echo -e "${GREEN}✅ Wukong Protocol successfully installed!${NC}"
 echo -e "Structure created:"
 echo -e "  - $TARGET_DIR/.wukong/"
 echo -e "  - $TARGET_DIR/.claude/rules/"
+echo -e "  - $TARGET_DIR/.claude/skills/"
+echo -e "  - $TARGET_DIR/.claude/commands/"
 echo ""
 echo -e "Start Claude Code and say: 'Hello Wukong'"
