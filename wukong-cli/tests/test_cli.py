@@ -134,7 +134,6 @@ class TestInstall:
             # Verify all expected directories exist
             expected_dirs = [
                 ".claude/rules",
-                ".claude/rules-extended",
                 ".claude/skills",
                 ".claude/commands",
                 ".wukong/context/current",

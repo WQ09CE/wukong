@@ -129,7 +129,6 @@ def do_install(
     # Directory structure to create
     dirs_to_create = [
         ".claude/rules",
-        ".claude/rules-extended",
         ".claude/skills",
         ".claude/commands",
         ".wukong/context/current",
@@ -152,31 +151,17 @@ def do_install(
                 console.print(f"  [green][ok][/green] Created {dir_path}/")
     stats.add_dirs(dirs_created_count)
 
-    # Copy rules-lite to .claude/rules/ (core rules loaded at startup)
-    rules_lite_src = source / "rules-lite"
-    if rules_lite_src.exists():
+    # Copy core rule to .claude/rules/ (auto-loaded at startup)
+    core_rule = source / "rules" / "00-wukong-core.md"
+    if core_rule.exists():
         rules_dst = target_path / ".claude/rules"
-        count = _copy_files(rules_lite_src, rules_dst, "*.md", "Core rules (lite)", dry_run, verbose)
-        stats.add_files(count)
-    else:
-        # Fallback: copy only 00-wukong-core.md
-        core_rule = source / "rules" / "00-wukong-core.md"
-        if core_rule.exists():
-            rules_dst = target_path / ".claude/rules"
-            if dry_run:
-                console.print(f"  [dim]would copy[/dim] Core rule")
-            else:
-                shutil.copy2(core_rule, rules_dst / "00-wukong-core.md")
-                if verbose:
-                    console.print(f"  [green][ok][/green] Core rule")
-                stats.add_files(1)
-
-    # Copy rules to .claude/rules-extended/ (extended rules, on-demand)
-    rules_src = source / "rules"
-    if rules_src.exists():
-        rules_ext_dst = target_path / ".claude/rules-extended"
-        count = _copy_rules_extended(rules_src, rules_ext_dst, dry_run, verbose)
-        stats.add_files(count)
+        if dry_run:
+            console.print(f"  [dim]would copy[/dim] Core rule")
+        else:
+            shutil.copy2(core_rule, rules_dst / "00-wukong-core.md")
+            if verbose:
+                console.print(f"  [green][ok][/green] Core rule")
+            stats.add_files(1)
 
     # Copy skills
     skills_src = source / "skills"
@@ -272,40 +257,6 @@ def _copy_files(
     return len(files)
 
 
-def _copy_rules_extended(
-    src_dir: Path,
-    dst_dir: Path,
-    dry_run: bool,
-    verbose: bool,
-) -> int:
-    """Copy rules to rules-extended, stripping numeric prefix.
-
-    Example: 01-task-orchestration.md -> task-orchestration.md
-
-    Returns:
-        Number of files copied.
-    """
-    import re
-
-    files = list(src_dir.glob("*.md"))
-    if not files:
-        if verbose:
-            console.print(f"  [yellow][skip][/yellow] Extended rules (no files)")
-        return 0
-
-    if dry_run:
-        console.print(f"  [dim]would copy[/dim] Extended rules ({len(files)} files)")
-    else:
-        for f in files:
-            # Strip numeric prefix: "01-name.md" -> "name.md"
-            new_name = re.sub(r"^\d+-", "", f.name)
-            shutil.copy2(f, dst_dir / new_name)
-        if verbose:
-            console.print(f"  [green][ok][/green] Extended rules ({len(files)} files)")
-
-    return len(files)
-
-
 def do_doctor(target: str, verbose: bool = False) -> int:
     """Execute the doctor command.
 
@@ -326,7 +277,6 @@ def do_doctor(target: str, verbose: bool = False) -> int:
     checks: List[Tuple[str, str, str]] = [
         (".claude/rules/00-wukong-core.md", "file", "Core rule"),
         (".claude/rules/", "dir", "Rules directory"),
-        (".claude/rules-extended/", "dir", "Extended rules"),
         (".claude/skills/", "dir", "Skills"),
         (".claude/commands/", "dir", "Commands"),
         (".wukong/context/anchors.md", "file", "Anchors file"),

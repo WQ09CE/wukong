@@ -55,15 +55,10 @@ mkdir -p "$CLAUDE_DIR/skills"
 echo -e "Installing Wukong to ${GREEN}$TARGET_DIR${NC}..."
 
 # ============================================================
-# 核心规则: rules-lite/ → rules/ (启动时加载)
+# 核心规则: rules/00-wukong-core.md → rules/ (启动时加载)
 # ============================================================
-echo "Activating Wukong Core Rules (lite)..."
-if [ -d "$SOURCE_DIR/rules-lite" ]; then
-    cp "$SOURCE_DIR"/rules-lite/*.md "$CLAUDE_DIR/rules/"
-else
-    # 兼容旧版：如果没有 rules-lite，只复制核心文件
-    cp "$SOURCE_DIR"/rules/00-wukong-core.md "$CLAUDE_DIR/rules/"
-fi
+echo "Activating Wukong Core Rules..."
+cp "$SOURCE_DIR"/rules/00-wukong-core.md "$CLAUDE_DIR/rules/"
 
 # ============================================================
 # 命令和技能
