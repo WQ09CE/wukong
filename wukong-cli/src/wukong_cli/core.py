@@ -275,6 +275,10 @@ def do_doctor(target: str, verbose: bool = False) -> int:
     """
     target_path = Path(target).resolve()
 
+    # If target_path ends with .claude, treat it as the project root's parent
+    if target_path.name == ".claude":
+        target_path = target_path.parent
+
     console.print("[bold blue]Wukong Doctor[/bold blue]")
     console.print(f"Checking [cyan]{target_path}[/cyan]...")
     console.print()
