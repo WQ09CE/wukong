@@ -189,6 +189,11 @@ cd wukong
 - [核心规则](.claude/rules/00-wukong-core.md)
 - [分身技能](.claude/skills/)
 
+## 参考项目
+
+- [oh-my-opencode](https://github.com/code-yeongyu/oh-my-opencode) - OpenCode 配置框架
+- [claude-code-settings](https://github.com/feiskyer/claude-code-settings) - Claude Code 设置最佳实践
+
 ## License
 
 MIT
