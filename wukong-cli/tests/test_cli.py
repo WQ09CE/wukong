@@ -51,6 +51,7 @@ class TestHelp:
         assert result.exit_code == 0
         assert "PATH" in result.output
         assert "--dry-run" in result.output
+        assert "--force" in result.output
 
     def test_doctor_help(self, runner: CliRunner) -> None:
         """Test that doctor help is displayed."""
@@ -112,7 +113,7 @@ class TestInstall:
             if (wukong_root / ".wukong").exists():
                 os.chdir(wukong_root)
 
-            result = runner.invoke(cli, ["-v", "install", str(temp_dir)])
+            result = runner.invoke(cli, ["-v", "install", str(temp_dir), "--force"])
             # Should show more detailed output
             assert "Source:" in result.output or "Created" in result.output
         finally:
@@ -127,7 +128,7 @@ class TestInstall:
             if (wukong_root / ".wukong").exists():
                 os.chdir(wukong_root)
 
-            result = runner.invoke(cli, ["install", str(temp_dir)])
+            result = runner.invoke(cli, ["install", str(temp_dir), "--force"])
             assert result.exit_code == 0
 
             # Verify all expected directories exist
@@ -147,6 +148,10 @@ class TestInstall:
 
             # Verify anchors.md is created
             assert (temp_dir / ".wukong/context/anchors.md").exists()
+
+            # Verify summary is shown
+            assert "Created" in result.output
+            assert "copied" in result.output
         finally:
             os.chdir(original_cwd)
 
@@ -160,6 +165,72 @@ class TestInstall:
             result = runner.invoke(cli, ["install", str(temp_dir)])
             assert result.exit_code == 1
             assert "Cannot find Wukong source files" in result.output
+            # Verify actionable suggestions are shown
+            assert "Please try one of" in result.output
+            assert "WUKONG_HOME" in result.output
+        finally:
+            os.chdir(original_cwd)
+
+
+class TestInstallOverwrite:
+    """Tests for install overwrite confirmation."""
+
+    def test_install_prompts_for_overwrite(self, runner: CliRunner, temp_dir: Path) -> None:
+        """Test that install prompts when .claude/ exists."""
+        import os
+        original_cwd = os.getcwd()
+        try:
+            wukong_root = Path(__file__).parent.parent.parent
+            if (wukong_root / ".wukong").exists():
+                os.chdir(wukong_root)
+
+            # First install to temp_dir
+            runner.invoke(cli, ["install", str(temp_dir), "--force"])
+
+            # Now try to install again without --force, answer 'n'
+            result = runner.invoke(cli, ["install", str(temp_dir)], input="n\n")
+            assert "Existing .claude/ found" in result.output
+            assert "Aborted" in result.output
+        finally:
+            os.chdir(original_cwd)
+
+    def test_install_force_skips_confirmation(self, runner: CliRunner, temp_dir: Path) -> None:
+        """Test that --force flag skips overwrite confirmation."""
+        import os
+        original_cwd = os.getcwd()
+        try:
+            wukong_root = Path(__file__).parent.parent.parent
+            if (wukong_root / ".wukong").exists():
+                os.chdir(wukong_root)
+
+            # First install to temp_dir
+            runner.invoke(cli, ["install", str(temp_dir), "--force"])
+
+            # Now install again with --force, should succeed without prompt
+            result = runner.invoke(cli, ["install", str(temp_dir), "--force"])
+            assert result.exit_code == 0
+            assert "Existing" not in result.output
+            assert "Done!" in result.output
+        finally:
+            os.chdir(original_cwd)
+
+    def test_install_dry_run_skips_confirmation(self, runner: CliRunner, temp_dir: Path) -> None:
+        """Test that --dry-run skips overwrite confirmation even when .claude/ exists."""
+        import os
+        original_cwd = os.getcwd()
+        try:
+            wukong_root = Path(__file__).parent.parent.parent
+            if (wukong_root / ".wukong").exists():
+                os.chdir(wukong_root)
+
+            # First install to temp_dir
+            runner.invoke(cli, ["install", str(temp_dir), "--force"])
+
+            # Now dry-run install, should not prompt
+            result = runner.invoke(cli, ["install", str(temp_dir), "--dry-run"])
+            assert result.exit_code == 0
+            assert "Existing" not in result.output
+            assert "would create" in result.output or "would copy" in result.output
         finally:
             os.chdir(original_cwd)
 
@@ -177,7 +248,7 @@ class TestDoctorHealthy:
                 os.chdir(wukong_root)
 
             # First install to temp_dir
-            install_result = runner.invoke(cli, ["install", str(temp_dir)])
+            install_result = runner.invoke(cli, ["install", str(temp_dir), "--force"])
             assert install_result.exit_code == 0
 
             # Now doctor should report healthy
@@ -197,7 +268,7 @@ class TestDoctorHealthy:
                 os.chdir(wukong_root)
 
             # First install to temp_dir
-            runner.invoke(cli, ["install", str(temp_dir)])
+            runner.invoke(cli, ["install", str(temp_dir), "--force"])
 
             # Run doctor with verbose
             result = runner.invoke(cli, ["-v", "doctor", str(temp_dir)])

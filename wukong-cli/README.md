@@ -31,6 +31,11 @@ wukong install --dry-run
 
 # Show detailed output
 wukong -v install
+
+# Force overwrite existing installation (skip confirmation)
+wukong install --force
+# or
+wukong install -f
 ```
 
 ### Check installation health
@@ -60,4 +65,5 @@ wukong version
 |--------|-------------|
 | `-v, --verbose` | Show detailed output |
 | `--dry-run` | Preview actions without executing (install only) |
+| `-f, --force` | Overwrite existing installation without confirmation (install only) |
 | `--help` | Show help message |

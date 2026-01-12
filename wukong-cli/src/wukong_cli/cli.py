@@ -32,14 +32,15 @@ def version() -> None:
 @cli.command()
 @click.argument("path", default=".", type=click.Path())
 @click.option("--dry-run", is_flag=True, help="Preview actions without executing")
+@click.option("--force", "-f", is_flag=True, help="Overwrite existing installation without confirmation")
 @click.pass_context
-def install(ctx: click.Context, path: str, dry_run: bool) -> None:
+def install(ctx: click.Context, path: str, dry_run: bool, force: bool) -> None:
     """Install Wukong protocol to a project.
 
     PATH is the target project directory (default: current directory).
     """
     verbose = ctx.obj.get("verbose", False)
-    exit_code = do_install(path, dry_run=dry_run, verbose=verbose)
+    exit_code = do_install(path, dry_run=dry_run, verbose=verbose, force=force)
     ctx.exit(exit_code)
 
 
