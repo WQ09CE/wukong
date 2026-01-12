@@ -1,203 +1,191 @@
-# Wukong 悟空
+# Wukong
 
-> 基于六根分身的 AI Agent 多智能体协作系统
->
-> "六根并行生产；戒定慧识四大护航；PreCompact 自动沉淀。"
+> Multi-Agent Orchestration Framework for Claude Code
 
-**Wukong** 将 Claude Code 转化为高效的工程团队。本体专注用户交互，六根分身并行执行专业任务。
+A framework that transforms Claude Code into a coordinated engineering team through **specialized agents**, **verification pipelines**, and **persistent knowledge management**.
 
-## 核心架构
+## Core Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        用户 (User)                               │
+│                           User                                   │
 └───────────────────────────┬─────────────────────────────────────┘
-                            │ /wukong 命令
+                            │
                             ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      悟空本体 (Coordinator)                       │
-│  • 用户交互  • 轨道选择  • 分身调度  • 结果验证  • 进度汇报        │
+│                    Coordinator (Main Agent)                      │
+│  • Task decomposition  • Agent dispatch  • Result verification   │
 └───────────────────────────┬─────────────────────────────────────┘
-                            │ Task() 召唤
+                            │
                             ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    六根分身 (Six Roots Avatars)                   │
-│   👁️眼      👂耳      👃鼻      👅舌      ⚔️身       🧠意        │
-│   探索      需求      审查      测试      实现       设计        │
+│                   Specialized Agents (6 Types)                   │
+│  Explorer   Analyst   Reviewer   Tester   Implementer  Architect │
 └───────────────────────────┬─────────────────────────────────────┘
-                            │ 输出
+                            │
                             ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                   戒定慧识 (Four Pillars)                        │
-│   ⛔戒 ────→ 🎯定 ────→ 💡慧 ────→ 📚识                         │
-│   规则检查    可复现      反思沉淀    存储反馈                    │
+│                    Verification Pipeline                         │
+│   Compliance ──→ Reproducibility ──→ Reflection ──→ Storage     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## 六根分身系统
+## Design Principles
 
-> **六根**源自佛教，指眼、耳、鼻、舌、身、意六种感知器官。
+### 1. Separation of Concerns
 
-| 六根 | 分身 | 能力 | 后台 | Do | Don't |
-|------|------|------|------|-----|-------|
-| 👁️眼 | 眼分身 | 探索·搜索 | ✓ | 搜索、定位 | 修改代码 |
-| 👂耳 | 耳分身 | 需求·理解 | - | 澄清需求、AC | 实现设计 |
-| 👃鼻 | 鼻分身 | 审查·检测 | ✓ | 审查、扫描 | 修复代码 |
-| 👅舌 | 舌分身 | 测试·文档 | - | 写测试文档 | 实现功能 |
-| ⚔️身 | 斗战胜佛 | 实现·行动 | - | 写代码修复 | 跳过测试 |
-| 🧠意 | 意分身 | 设计·决策 | - | 架构设计 | 写实现 |
+Each agent has a strictly defined:
+- **Responsibility Boundary** - What it can/cannot do
+- **Output Contract** - Standardized output format
+- **Tool Allowlist** - Permitted tool access
 
-**职能三件套**: 每个分身强制定义 **职责边界** + **输出契约** + **工具权限**
+| Agent | Role | Can Do | Cannot Do | Tools |
+|-------|------|--------|-----------|-------|
+| Explorer | Search & Discovery | Search, locate files | Modify code | Glob, Grep, Read |
+| Analyst | Requirements | Clarify requirements, define AC | Design or implement | Read |
+| Reviewer | Code Review | Audit, scan issues | Fix code | Read, Grep |
+| Tester | Testing & Docs | Write tests, documentation | Implement features | Read, Write, Bash |
+| Implementer | Implementation | Write code, fix bugs | Skip verification | All |
+| Architect | Design | System design, decisions | Write implementation | Read, Write(md) |
 
-## 戒定慧识四大模块
+### 2. Verification Pipeline
+
+Every agent output passes through a 4-stage verification:
 
 ```
-分身输出 ──→ ⛔戒 ──→ 🎯定 ──→ 💡慧 ──→ 📚识
-            规则检查   可复现    反思沉淀   存储反馈
+Agent Output ──→ Compliance ──→ Reproducibility ──→ Reflection ──→ Storage
+                    │                │                  │            │
+                 Contract         Evidence           Extract       Persist
+                 checking         levels             insights      anchors
 ```
 
-| 模块 | 职责 | 关键规则 |
-|------|------|----------|
-| ⛔ 戒 | 规则检查 | Contract 完整性、Do/Don't 边界、安全检查 |
-| 🎯 定 | 可复现验证 | L0推测❌ → L1引用⚠️ → L2本地✅ → L3集成✅✅ |
-| 💡 慧 | 反思沉淀 | 末那识扫描、锚点提取、PreCompact Hook |
-| 📚 识 | 存储反馈 | 三态上下文、锚点索引、T1/T2惯性提示 |
+**Evidence Levels:**
+| Level | Description | Trust |
+|-------|-------------|-------|
+| L0 | Speculation ("should work...") | ❌ Reject |
+| L1 | Reference (docs, comments) | ⚠️ Conditional |
+| L2 | Local verification (tests pass) | ✅ Accept |
+| L3 | Integration verification (CI pass) | ✅✅ Full trust |
 
-**惯性提示 (识→六根反馈)**:
-- **T1** (任务启动前): 查询 P/C/M 锚点 → 风险预警、约束提醒
-- **T2** (方案冻结后): 查询 D/I 锚点 → 历史决策、回滚经验
+### 3. Persistent Knowledge (Anchors)
 
-## 锚点系统
+Critical decisions persist across sessions as **anchors**:
 
-| 类型 | 前缀 | 说明 | 示例 |
-|------|------|------|------|
-| 决策 | D | 架构/技术决策 | [D001] 采用六根分身模型 |
-| 约束 | C | 必须遵守的规则 | [C001] 输出必须脱敏 |
-| 接口 | I | 关键接口定义 | [I001] Sanitizer.sanitize() |
-| 问题 | P | 已知问题/陷阱 | [P001] 串行执行反模式 |
-| 模式 | M | 可复用模式 | [M001] Repository 模式 |
+| Type | Prefix | Purpose |
+|------|--------|---------|
+| Decision | D | Architecture/tech decisions |
+| Constraint | C | Rules that must be followed |
+| Interface | I | Key API definitions |
+| Problem | P | Known issues/pitfalls |
+| Pattern | M | Reusable patterns |
 
-## 安装
+### 4. Parallel Execution
 
-### CLI 安装 (推荐)
+Independent tasks execute concurrently:
+- **Max parallelism**: 3-4 agents
+- **Same file**: Must serialize
+- **Dependencies**: Execute in order
+
+**Mandatory parallelization:**
+- Modifying ≥2 independent files → One agent per file
+- ≥2 independent modules → One agent per module
+
+### 5. Context Management
+
+Three context compression levels:
+
+| Level | Size | Use Case |
+|-------|------|----------|
+| Expanded | Unlimited | Complex debugging |
+| Normal | 500-2000 chars | Regular work |
+| Compact | <500 chars | Cross-session, agent handoff |
+
+### 6. Feedback Loop
+
+Knowledge flows back to agents before task execution:
+
+- **T1 (Pre-task)**: Query Problems/Constraints/Patterns → Risk warnings
+- **T2 (Post-design)**: Query Decisions/Interfaces → Historical context
+
+## Installation
 
 ```bash
 pip install wukong-cli
 wukong install /path/to/project
 ```
 
-### 脚本安装
+## Usage
+
+### Direct Agent Dispatch
 
 ```bash
-git clone https://github.com/anthropics/wukong.git
-cd wukong
-./install.sh /path/to/project
+/wukong @explorer search for authentication code
+/wukong @architect design a caching layer
+/wukong @implementer implement the login endpoint
+/wukong @reviewer audit this PR
 ```
 
-## 使用
-
-### 基本命令
+### Automatic Workflow Selection
 
 ```bash
-# 激活悟空
-/wukong 你好
-
-# 自动轨道选择
-/wukong 添加用户登录功能    # → Feature Track
-/wukong 修复支付模块 bug    # → Fix Track
-/wukong 重构认证代码        # → Refactor Track
+/wukong add user authentication    # → Feature workflow
+/wukong fix the login bug          # → Fix workflow
+/wukong refactor the auth module   # → Refactor workflow
 ```
 
-### 显式指定分身 (@语法)
+### Context Commands
 
-```bash
-/wukong @眼 探索项目结构
-/wukong @意 设计缓存方案
-/wukong @斗战胜佛 实现登录功能
-/wukong @鼻 审查这个 PR
-```
+| Command | Action |
+|---------|--------|
+| `/wukong reflect` | Extract insights and anchors |
+| `/wukong compress` | Generate compact summary |
+| `/wukong archive` | Save session to storage |
+| `/wukong load {name}` | Restore previous session |
+| `/wukong anchors` | Show all anchors |
 
-| @ 标记 | 分身 | 英文别名 |
-|--------|------|----------|
-| `@眼` | 眼分身 | `@explorer` |
-| `@耳` | 耳分身 | `@analyst` |
-| `@鼻` | 鼻分身 | `@reviewer` |
-| `@舌` | 舌分身 | `@tester` |
-| `@身` / `@斗战胜佛` | 斗战胜佛 | `@impl` |
-| `@意` | 意分身 | `@architect` |
-
-### 上下文管理
-
-| 命令 | 动作 |
-|------|------|
-| `/wukong 内观` | 慧模块反思 + 提取锚点 |
-| `/wukong 压缩` | 生成缩形态摘要 (<500字) |
-| `/wukong 存档` | 保存到 sessions/ |
-| `/wukong 加载 {name}` | 恢复历史会话 |
-| `/wukong 锚点` | 显示所有锚点 |
-
-**三态形态**: 🔶巨(完整) → 🔹常(结构化) → 🔸缩(<500字)
-
-## 目录结构
+## Project Structure
 
 ```
-项目根目录/
-├── .claude/                    # Claude Code 配置
-│   ├── rules/                  # 规则 (自动加载)
-│   │   └── 00-wukong-core.md  # 核心规则
-│   ├── skills/                 # 分身技能
-│   └── commands/               # 命令
-│       └── wukong.md          # /wukong 命令
+project/
+├── .claude/
+│   ├── rules/              # Auto-loaded rules
+│   ├── skills/             # Agent skill definitions
+│   └── commands/           # Command handlers
 │
-└── .wukong/                   # Wukong 数据
-    ├── context/               # 上下文存储
-    │   ├── anchors.md        # 锚点索引
-    │   ├── index.json        # 会话索引
-    │   └── sessions/         # 历史存档
-    ├── notepads/             # 记事本
-    └── plans/                # 计划文档
-
-~/.wukong/                    # 全局配置
-└── hooks/
-    └── hui-extract.py       # 慧模块 PreCompact Hook
+└── .wukong/
+    ├── context/
+    │   ├── anchors.md      # Persistent anchors
+    │   ├── index.json      # Session index
+    │   └── sessions/       # Session archives
+    └── plans/              # Design documents
 ```
 
-## 筋斗云 (并行执行)
+## Key Constraints
 
-- **最大并行**: 3-4 个分身
-- **强制并行**: 修改 ≥2 个独立文件 → 每文件一个分身
-- **禁止**: 把多个独立任务打包给一个分身
+**Coordinator MUST delegate:**
+- Multi-file exploration → Explorer (background)
+- Code changes >10 lines → Implementer
+- File creation → Implementer
+- Build/test execution → Tester or Implementer
 
-**召唤前自检**: "这个任务能拆成并行吗？"
+**Coordinator MAY handle directly:**
+- Reading 1-2 files
+- Single Glob/Grep query
+- Simple verification checks
+- User communication
 
-## 紧箍咒 (约束)
+## Documentation
 
-**NEVER**:
-- 跳过验证 / 未读代码就修改
-- 本体写大量代码 (>10行)
-- 串行执行可并行任务
-- 违反分身职责边界
+- [System Overview](.wukong/plans/wukong-system-overview.md)
+- [Core Rules](.claude/rules/00-wukong-core.md)
+- [Agent Skills](.claude/skills/)
+- [Mythology Version](README-mythology.md) - With Eastern philosophy terminology
 
-**ALWAYS**:
-- 验证分身输出
-- 保持构建/测试通过
-- 分身输出后执行戒定慧检查
+## References
 
-## 详细文档
-
-- [系统架构总览](.wukong/plans/wukong-system-overview.md)
-- [核心规则](.claude/rules/00-wukong-core.md)
-- [分身技能](.claude/skills/)
-
-## 参考项目
-
-- [oh-my-opencode](https://github.com/code-yeongyu/oh-my-opencode) - OpenCode 配置框架
-- [claude-code-settings](https://github.com/feiskyer/claude-code-settings) - Claude Code 设置最佳实践
+- [oh-my-opencode](https://github.com/code-yeongyu/oh-my-opencode)
+- [claude-code-settings](https://github.com/feiskyer/claude-code-settings)
 
 ## License
 
 MIT
-
----
-
-> *"吾乃齐天大圣孙悟空，筋斗云十万八千里，七十二变随心所欲。"*
