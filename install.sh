@@ -49,7 +49,6 @@ fi
 
 # 创建目标目录结构
 mkdir -p "$CLAUDE_DIR/rules"
-mkdir -p "$CLAUDE_DIR/rules-extended"
 mkdir -p "$CLAUDE_DIR/commands"
 mkdir -p "$CLAUDE_DIR/skills"
 
@@ -64,23 +63,6 @@ if [ -d "$SOURCE_DIR/rules-lite" ]; then
 else
     # 兼容旧版：如果没有 rules-lite，只复制核心文件
     cp "$SOURCE_DIR"/rules/00-wukong-core.md "$CLAUDE_DIR/rules/"
-fi
-
-# ============================================================
-# 扩展规则: rules/ → rules-extended/ (按需加载)
-# 单一真相源: 从 rules/ 复制，自动去掉序号前缀
-# ============================================================
-echo "Installing Extended Rules (on-demand, from single source of truth)..."
-if [ -d "$SOURCE_DIR/rules" ]; then
-    for file in "$SOURCE_DIR"/rules/*.md; do
-        if [ -f "$file" ]; then
-            filename=$(basename "$file")
-            # 去掉序号前缀: "01-task-orchestration.md" → "task-orchestration.md"
-            # 但保留 "00-wukong-core.md" → "wukong-core.md"
-            newname=$(echo "$filename" | sed 's/^[0-9]*-//')
-            cp "$file" "$CLAUDE_DIR/rules-extended/$newname"
-        fi
-    done
 fi
 
 # ============================================================
@@ -125,11 +107,10 @@ fi
 echo -e "${GREEN}✅ Wukong Protocol successfully installed!${NC}"
 echo -e "Structure created:"
 echo -e "  - $CLAUDE_DIR/rules/          (精简核心规则 - 启动加载)"
-echo -e "  - $CLAUDE_DIR/rules-extended/ (完整规则 - 按需加载, 单一真相源)"
-echo -e "  - $CLAUDE_DIR/skills/         (分身技能)"
+echo -e "  - $CLAUDE_DIR/skills/         (分身技能 + 方法论)"
 echo -e "  - $CLAUDE_DIR/commands/       (命令)"
 echo -e "  - $WUKONG_DIR/                (工作数据)"
 echo ""
-echo -e "${YELLOW}💡 Tip: rules-extended/ 现在直接从 rules/ 复制，保证内容完整一致${NC}"
+echo -e "${YELLOW}💡 Tip: skills/ 包含分身技能和方法论文档，按需加载${NC}"
 echo ""
 echo -e "Start Claude Code and say: 'Hello Wukong'"

@@ -1,0 +1,124 @@
+# Alaya Injection Configuration (阿赖耶识注入配置)
+# 详见: .wukong/skills/alaya-injection.md
+
+alaya:
+  enabled: true
+  version: "1.0"
+
+  # 时机 1: 任务启动前 (Pre-Track)
+  timing_1:
+    enabled: true
+    max_words: 300
+    max_warnings: 5        # 最多 5 条风险提醒
+    max_constraints: 3     # 最多 3 条约束提醒
+    max_antipatterns: 3    # 最多 3 条 anti-pattern
+    similarity_threshold: 0.7
+    anchor_types:
+      - P  # 问题/陷阱
+      - C  # 约束
+      - M  # 模式
+
+  # 时机 2: 方案冻结后 (Pre-Implementation)
+  timing_2:
+    enabled: true
+    max_words: 400
+    max_decisions: 5       # 最多 5 条历史决策
+    max_tradeoffs: 3       # 最多 3 条 tradeoff
+    similarity_threshold: 0.6
+    anchor_types:
+      - D  # 决策
+    # 轨道适配矩阵
+    tracks:
+      feature: true        # Feature Track: 意→身 时触发
+      refactor: true       # Refactor Track: 意→身 时触发
+      fix: conditional     # Fix Track: 有意分身参与时触发
+      direct: false        # Direct Track: 无设计阶段，跳过
+
+  # 时机 3: 存档前 (Pre-Archive)
+  timing_3:
+    enabled: true
+    # 写入门槛 (至少满足一项)
+    threshold:
+      min_frequency: 2                 # 重复性: 类似问题/决策 ≥ 2 次
+      impact_types:                    # 影响面类型
+        - architecture
+        - security
+        - performance
+        - multi_module
+      require_reusability: false       # 可复用性 (至少满足一项即可)
+    # 去重配置
+    deduplication:
+      similarity_threshold: 0.8        # 相似度 > 0.8 视为重复
+      auto_merge: true                 # 自动合并相似锚点
+      conflict_review: true            # 冲突时标记待人工审核
+    # 输出位置
+    output:
+      anchors_file: ".wukong/context/anchors.md"
+      pending_file: ".wukong/context/anchors-pending.md"
+
+  # 单向规则 (Unidirectional Rule)
+  unidirectional:
+    # 允许的字段 (只读)
+    allowed_fields:
+      - warnings
+      - tags
+      - references
+      - historical_decisions
+      - known_tradeoffs
+      - rollback_experience
+      - anti_patterns
+    # 禁止的字段 (决策性内容)
+    forbidden_fields:
+      - recommended_solution
+      - final_decision
+      - must_use
+      - priority_order
+      - confidence_score
+    # 违反时的处理
+    on_violation: filter_and_warn      # filter_and_warn | reject | log_only
+
+# 锚点类型定义
+anchor_types:
+  D:
+    name: "Decision"
+    description: "架构决策记录 (ADR)"
+    prefix: "D"
+    retention: permanent
+  C:
+    name: "Constraint"
+    description: "约束条件"
+    prefix: "C"
+    retention: permanent
+  I:
+    name: "Interface"
+    description: "接口契约"
+    prefix: "I"
+    retention: until_changed
+  P:
+    name: "Pitfall"
+    description: "已知陷阱/问题"
+    prefix: "P"
+    retention: permanent
+  M:
+    name: "Pattern"
+    description: "可复用模式"
+    prefix: "M"
+    retention: permanent
+  U:
+    name: "Preference"
+    description: "用户偏好"
+    prefix: "U"
+    retention: session
+
+# 存储路径
+storage:
+  anchors: ".wukong/context/anchors.md"
+  pending: ".wukong/context/anchors-pending.md"
+  sessions: ".wukong/context/sessions/"
+  templates: ".wukong/context/templates/"
+
+# 调试配置
+debug:
+  log_injections: false               # 记录所有注入
+  log_writes: true                    # 记录所有写入
+  log_skips: false                    # 记录跳过的候选
