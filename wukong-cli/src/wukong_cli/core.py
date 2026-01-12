@@ -97,6 +97,12 @@ def do_install(
         Exit code (0 for success, 1 for failure).
     """
     target_path = Path(target).resolve()
+
+    # If target_path ends with .claude, treat it as the project root's parent
+    # e.g., ~/.claude -> ~ (so files go to ~/.claude/rules, not ~/.claude/.claude/rules)
+    if target_path.name == ".claude":
+        target_path = target_path.parent
+
     stats = InstallStats()
 
     console.print("[bold blue]Wukong Installer[/bold blue]")
