@@ -1,0 +1,13 @@
+{
+  "anchors_written": [
+    {
+      "candidate_id": "D_candidate_0",
+      "new_id": "D001",
+      "type": "decision",
+      "title": "<local-command-caveat>Caveat: The messages belo..."
+    }
+  ],
+  "anchors_skipped": [],
+  "anchors_duplicated": [],
+  "errors": []
+}

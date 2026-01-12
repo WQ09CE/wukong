@@ -183,10 +183,10 @@ def do_install(
         count = _copy_files(commands_src, commands_dst, "*.md", "Commands", dry_run, verbose)
         stats.add_files(count)
 
-    # Copy templates (if exist)
+    # Copy templates (if exist and source != target)
     templates_src = source / "templates"
-    if templates_src.exists():
-        templates_dst = target_path / ".wukong/templates"
+    templates_dst = target_path / ".wukong/templates"
+    if templates_src.exists() and templates_src.resolve() != templates_dst.resolve():
         if dry_run:
             console.print(f"  [dim]would copy[/dim] Templates")
         else:
@@ -197,10 +197,10 @@ def do_install(
             if verbose:
                 console.print(f"  [green][ok][/green] Templates ({template_count} files)")
 
-    # Copy context templates (if exist)
+    # Copy context templates (if exist and source != target)
     ctx_templates_src = source / "context/templates"
-    if ctx_templates_src.exists():
-        ctx_templates_dst = target_path / ".wukong/context/templates"
+    ctx_templates_dst = target_path / ".wukong/context/templates"
+    if ctx_templates_src.exists() and ctx_templates_src.resolve() != ctx_templates_dst.resolve():
         if dry_run:
             console.print(f"  [dim]would copy[/dim] Context templates")
         else:

@@ -1,0 +1,68 @@
+{
+  "anchors_written": [
+    {
+      "candidate_id": "D_candidate_0",
+      "new_id": "D002",
+      "type": "decision",
+      "title": "<task-notification>"
+    },
+    {
+      "candidate_id": "D_candidate_1",
+      "new_id": "D003",
+      "type": "decision",
+      "title": "alaya机制已经被 识系统取代了， 你帮忙研究下识系统吧， 识系统主要是定义如何存储沉淀信息..."
+    },
+    {
+      "candidate_id": "D_candidate_2",
+      "new_id": "D004",
+      "type": "decision",
+      "title": "## 识系统架构设计"
+    },
+    {
+      "candidate_id": "D_candidate_3",
+      "new_id": "D005",
+      "type": "decision",
+      "title": "### 三、识→六根反馈机制设计"
+    },
+    {
+      "candidate_id": "D_candidate_4",
+      "new_id": "D006",
+      "type": "decision",
+      "title": "### 六、实现计划"
+    },
+    {
+      "candidate_id": "P_candidate_0",
+      "new_id": "P001",
+      "type": "problem",
+      "title": "眼分身的审查报告已完成。让我整理一下发现的问题。"
+    },
+    {
+      "candidate_id": "P_candidate_1",
+      "new_id": "P002",
+      "type": "problem",
+      "title": "眼分身审查已完成。我刚才已经整理好了完整的审查报告。"
+    },
+    {
+      "candidate_id": "C_candidate_0",
+      "new_id": "C002",
+      "type": "constraint",
+      "title": "# Wukong Multi-Agent Workflow (悟空多分身工作流)"
+    }
+  ],
+  "anchors_skipped": [],
+  "anchors_duplicated": [
+    {
+      "id": "P_candidate_2",
+      "existing_id": "D005"
+    },
+    {
+      "id": "C_candidate_1",
+      "existing_id": "D004"
+    },
+    {
+      "id": "C_candidate_2",
+      "existing_id": "D005"
+    }
+  ],
+  "errors": []
+}

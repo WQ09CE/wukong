@@ -245,6 +245,9 @@
 
 ### 时机 1: 任务启动前 (T1)
 
+**查询类型**: P(问题) + C(约束) + M(模式)
+**适用分身**: 眼、身、舌、鼻
+
 ```markdown
 ## [识 T1] 启动提示
 
@@ -254,11 +257,17 @@
 📌 **约束提醒**:
 - [C001] 输出必须脱敏
 
+🔄 **可复用模式**:
+- [M001] Repository 模式
+
 ---
 > 仅供参考，不影响决策
 ```
 
 ### 时机 2: 方案冻结后 (T2)
+
+**查询类型**: D(决策) + I(接口)
+**适用分身**: 意、身、鼻
 
 ```markdown
 ## [识 T2] 设计参考
@@ -268,12 +277,42 @@
 |----|------|------|
 | [D001] | Ollama | 成本低 |
 
+🔌 **相关接口**:
+- [I001] Agent.review()
+
 🔙 **回滚经验**:
 - D001: `LLM_BACKEND=openai`
 
 ---
 > 仅供参考，决策权在本体
 ```
+
+### API 函数 (hui-extract.py)
+
+```python
+# 获取 T1 惯性提示
+from hui_extract import get_shi_t1_prompt
+t1 = get_shi_t1_prompt('/path/to/project', ['API', '认证'])
+
+# 获取 T2 惯性提示
+from hui_extract import get_shi_t2_prompt
+t2 = get_shi_t2_prompt('/path/to/project', ['数据库'])
+
+# 根据分身类型自动选择
+from hui_extract import get_shi_prompt_for_avatar
+prompt = get_shi_prompt_for_avatar(cwd, '斗战胜佛', task_desc)
+```
+
+### 分身惯性提示配置
+
+| 分身 | T1 (风险/约束) | T2 (决策/接口) | 说明 |
+|------|----------------|----------------|------|
+| 眼 | ✓ | - | 探索前提示已知问题 |
+| 耳 | - | - | 需求分析无需历史包袱 |
+| 意 | - | ✓ | 设计时参考历史决策 |
+| 身 | ✓ | ✓ | 实现前获取完整上下文 |
+| 舌 | ✓ | - | 测试时提示已知陷阱 |
+| 鼻 | ✓ | ✓ | 审查时参考约束和决策 |
 
 ## 与其他模块关系
 
