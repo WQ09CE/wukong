@@ -134,6 +134,86 @@
    └── 是否有硬编码 workaround？
 ```
 
+### 安全检查清单 (Security Checklist)
+
+> 戒关必须检查以下安全相关事项，任何违规都是高严重度。
+
+#### 1. 系统安全 (System Safety)
+
+```
+□ 敏感路径检查
+   ├── 是否修改系统文件 (/etc, /usr, /bin, /sbin)？
+   ├── 是否访问 home 目录敏感文件 (~/.ssh, ~/.gnupg, ~/.aws)？
+   ├── 是否修改全局配置 (~/.bashrc, ~/.zshrc, ~/.gitconfig)？
+   └── 如果是 → 必须用户确认
+
+□ 危险命令检查
+   ├── rm -rf (递归删除)
+   ├── chmod 777 (开放权限)
+   ├── sudo / su (提权操作)
+   └── 如果包含 → 拒绝执行，要求重新设计
+```
+
+#### 2. 隐私保护 (Privacy Protection)
+
+```
+□ 敏感信息检测
+   ├── API Keys / Tokens (API_KEY=, token=, secret=)
+   ├── 密码 (password=, passwd=, pwd=)
+   ├── 私钥 (-----BEGIN PRIVATE KEY-----)
+   └── 如果包含 → 禁止输出，要求脱敏
+
+□ 敏感文件检测
+   ├── .env, .env.local, .env.production
+   ├── credentials.json, secrets.yaml
+   ├── *.pem, *.key, *.p12
+   └── 如果读取/写入 → 警告用户，要求确认
+```
+
+#### 3. 破坏性操作识别 (Destructive Operations)
+
+```
+□ 不可逆操作
+   ├── 删除文件/目录 (rm, del, unlink)
+   ├── 覆盖文件 (>, |, cp without backup)
+   ├── git reset --hard, git clean -fd
+   ├── git push --force (到共享分支)
+   └── 如果包含 → 必须用户确认，建议备份
+
+□ 大规模变更
+   ├── 批量文件修改 (>10 files)
+   ├── 全局搜索替换
+   └── 如果包含 → 要求分批执行，每批确认
+```
+
+#### 4. 代码安全 (Code Security)
+
+```
+□ 注入风险检测
+   ├── SQL 注入 (字符串拼接 SQL, 无参数化)
+   ├── 命令注入 (os.system, subprocess with shell=True)
+   ├── XSS (用户输入直接渲染 HTML)
+   └── 如果包含 → 拒绝，要求使用安全方式
+
+□ 硬编码检测
+   ├── 硬编码凭证
+   ├── 硬编码 IP/端口
+   └── 如果包含 → 要求改为配置/环境变量
+```
+
+### 安全检查违规处理
+
+| 违规类型 | 严重度 | 处理 |
+|----------|--------|------|
+| 修改系统文件 | CRITICAL | 立即拒绝 |
+| 暴露敏感信息 | CRITICAL | 立即拒绝 + 脱敏 |
+| 不可逆操作无确认 | HIGH | 阻塞，要求确认 |
+| SQL/命令注入风险 | HIGH | 拒绝，要求重写 |
+| 硬编码凭证 | HIGH | 拒绝，要求配置化 |
+| 使用未授权工具 | HIGH | 打回重做 |
+
+---
+
 ### 戒关违规处理
 
 | 违规类型 | 严重度 | 处理 |

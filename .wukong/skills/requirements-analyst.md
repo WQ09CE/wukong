@@ -207,3 +207,76 @@ When requirements are unclear, ask focused questions:
 - 考虑非功能需求
 - 记录假设和约束
 - 使用具体、可衡量的验收标准
+
+---
+
+## Output Contract (输出契约)
+
+> 耳分身的产出必须符合以下结构化格式，确保需求清晰、可验证。
+
+### Goal/Scope/Non-Goals 模板
+
+```markdown
+### Goal (目标)
+{一句话描述要达成什么}
+
+### Scope (范围)
+- 包含: {明确包含的内容}
+- 不包含: {明确排除的内容}
+
+### Non-Goals (非目标)
+- {不在本次范围内的相关事项}
+- {避免范围蔓延的边界声明}
+```
+
+### AC Checklist (验收标准清单)
+
+```markdown
+| ID | 描述 | 优先级 | 验证方式 |
+|----|------|--------|----------|
+| AC-001 | {具体、可衡量的验收条件} | Must | {如何验证} |
+| AC-002 | {具体、可衡量的验收条件} | Should | {如何验证} |
+| AC-003 | {具体、可衡量的验收条件} | Nice | {如何验证} |
+
+**优先级说明**:
+- Must: 必须满足，否则功能不可交付
+- Should: 应该满足，时间紧张可推迟
+- Nice: 锦上添花，有时间再做
+```
+
+### Risk Checklist (风险清单)
+
+```markdown
+| ID | 风险描述 | 可能性 | 影响 | 缓解措施 |
+|----|----------|--------|------|----------|
+| R-001 | {风险描述} | 高/中/低 | 高/中/低 | {如何缓解} |
+
+**风险矩阵**:
+- 高可能性 + 高影响 = 立即处理
+- 高可能性 + 低影响 = 计划处理
+- 低可能性 + 高影响 = 准备应急
+- 低可能性 + 低影响 = 接受风险
+```
+
+### Edge Cases Table (边界用例表)
+
+```markdown
+| ID | 场景 | 输入 | 期望行为 | 处理策略 |
+|----|------|------|----------|----------|
+| EC-001 | 空输入 | null/empty | {期望行为} | {策略} |
+| EC-002 | 极大输入 | {max value} | {期望行为} | {策略} |
+| EC-003 | 极小输入 | {min value} | {期望行为} | {策略} |
+| EC-004 | 无效格式 | {invalid} | {期望行为} | {策略} |
+| EC-005 | 并发访问 | {concurrent} | {期望行为} | {策略} |
+| EC-006 | 资源耗尽 | {exhausted} | {期望行为} | {策略} |
+```
+
+### Output Contract Summary
+
+| Section | Required | Format |
+|---------|----------|--------|
+| Goal/Scope/Non-Goals | MUST | Markdown |
+| AC Checklist | MUST | Table |
+| Risk Checklist | MUST | Table |
+| Edge Cases | MUST | Table |
+| Constraints | SHOULD | List |
