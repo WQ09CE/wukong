@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>悟空 Wukong - Multi-Agent Framework for Claude Code</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Noto+Serif+SC:wght@400;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold: #D4AF37;
+            --gold-light: #F5D76E;
+            --gold-dark: #AA8C2C;
+            --ember: #FF6B35;
+            --crimson: #DC143C;
+            --ink: #0a0a0f;
+            --ink-light: #15151f;
+            --smoke: rgba(255,255,255,0.05);
+            --cloud: rgba(255,255,255,0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Noto Serif SC', serif;
+            background: var(--ink);
+            color: #e8e8e8;
+            overflow-x: hidden;
+            line-height: 1.8;
+        }
+
+        /* Ink wash background effect */
+        .ink-wash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(212, 175, 55, 0.03) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(255, 107, 53, 0.02) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(21, 21, 31, 1) 0%, var(--ink) 100%);
+        }
+
+        /* Floating particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--gold);
+            border-radius: 50%;
+            opacity: 0;
+            animation: float-up 8s infinite;
+        }
+
+        @keyframes float-up {
+            0% { transform: translateY(100vh) scale(0); opacity: 0; }
+            10% { opacity: 0.8; }
+            90% { opacity: 0.2; }
+            100% { transform: translateY(-20vh) scale(1); opacity: 0; }
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.1) 0%, transparent 70%);
+            animation: pulse-glow 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.8; }
+        }
+
+        .chinese-title {
+            font-size: clamp(5rem, 15vw, 12rem);
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold) 50%, var(--ember) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 60px rgba(212, 175, 55, 0.3);
+            animation: title-reveal 1.5s ease-out;
+            letter-spacing: 0.2em;
+            position: relative;
+        }
+
+        .chinese-title::after {
+            content: '齐天大圣';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.2rem;
+            letter-spacing: 0.5em;
+            color: var(--gold-dark);
+            opacity: 0.6;
+            font-weight: 400;
+        }
+
+        @keyframes title-reveal {
+            0% { opacity: 0; transform: translateY(30px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        .subtitle {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(1rem, 3vw, 1.8rem);
+            color: var(--gold);
+            margin-top: 3rem;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            animation: fade-in 1.5s ease-out 0.3s both;
+        }
+
+        .tagline {
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.6);
+            margin-top: 1.5rem;
+            max-width: 600px;
+            animation: fade-in 1.5s ease-out 0.6s both;
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .scroll-hint {
+            position: absolute;
+            bottom: 3rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--gold);
+            opacity: 0.6;
+            animation: bounce 2s infinite;
+        }
+
+        .scroll-hint svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(10px); }
+        }
+
+        /* Section Styles */
+        section {
+            position: relative;
+            z-index: 2;
+            padding: 6rem 2rem;
+        }
+
+        .section-title {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            text-align: center;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--gold-light), var(--gold));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: rgba(255,255,255,0.5);
+            font-size: 1rem;
+            letter-spacing: 0.2em;
+            margin-bottom: 4rem;
+        }
+
+        /* Six Roots Section */
+        .six-roots {
+            background: linear-gradient(180deg, transparent 0%, var(--ink-light) 20%, var(--ink-light) 80%, transparent 100%);
+        }
+
+        .roots-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2rem;
+        }
+
+        .root-card {
+            background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+            border: 1px solid rgba(212, 175, 55, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: default;
+        }
+
+        .root-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, transparent 50%);
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+
+        .root-card:hover {
+            transform: translateY(-8px);
+            border-color: rgba(212, 175, 55, 0.3);
+            box-shadow: 0 20px 60px rgba(212, 175, 55, 0.1);
+        }
+
+        .root-card:hover::before {
+            opacity: 1;
+        }
+
+        .root-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .root-name {
+            font-family: 'Cinzel', serif;
+            font-size: 1.5rem;
+            color: var(--gold);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .root-name .chinese {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 1.2rem;
+            opacity: 0.7;
+        }
+
+        .root-role {
+            color: rgba(255,255,255,0.4);
+            font-size: 0.85rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+
+        .root-desc {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.95rem;
+            line-height: 1.7;
+        }
+
+        .root-keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .keyword {
+            background: rgba(212, 175, 55, 0.1);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: var(--gold);
+        }
+
+        /* Pipeline Section */
+        .pipeline {
+            padding: 8rem 2rem;
+        }
+
+        .pipeline-visual {
+            max-width: 1000px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .pipeline-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .pipeline-stage {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            padding: 2rem;
+            background: linear-gradient(90deg, rgba(212, 175, 55, 0.05) 0%, transparent 100%);
+            border-left: 3px solid var(--gold);
+            border-radius: 0 12px 12px 0;
+            transition: all 0.3s;
+        }
+
+        .pipeline-stage:hover {
+            background: linear-gradient(90deg, rgba(212, 175, 55, 0.1) 0%, transparent 100%);
+            transform: translateX(10px);
+        }
+
+        .stage-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            flex-shrink: 0;
+        }
+
+        .stage-content h3 {
+            font-family: 'Cinzel', serif;
+            font-size: 1.3rem;
+            color: var(--gold-light);
+            margin-bottom: 0.5rem;
+        }
+
+        .stage-content p {
+            color: rgba(255,255,255,0.6);
+            font-size: 0.95rem;
+        }
+
+        /* Evidence Levels */
+        .evidence-levels {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 3rem;
+        }
+
+        .evidence-card {
+            text-align: center;
+            padding: 1.5rem;
+            border-radius: 12px;
+            background: var(--smoke);
+            border: 1px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .evidence-card.reject {
+            border-color: rgba(220, 20, 60, 0.3);
+        }
+
+        .evidence-card.conditional {
+            border-color: rgba(255, 165, 0, 0.3);
+        }
+
+        .evidence-card.accept {
+            border-color: rgba(50, 205, 50, 0.3);
+        }
+
+        .evidence-card.trust {
+            border-color: rgba(212, 175, 55, 0.5);
+            background: rgba(212, 175, 55, 0.05);
+        }
+
+        .evidence-level {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .evidence-card.reject .evidence-level { color: var(--crimson); }
+        .evidence-card.conditional .evidence-level { color: orange; }
+        .evidence-card.accept .evidence-level { color: limegreen; }
+        .evidence-card.trust .evidence-level { color: var(--gold); }
+
+        .evidence-name {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.7);
+            margin-top: 0.5rem;
+        }
+
+        /* Knowledge Section */
+        .knowledge {
+            background: linear-gradient(180deg, transparent 0%, var(--ink-light) 20%, var(--ink-light) 80%, transparent 100%);
+        }
+
+        .knowledge-flow {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            padding: 1.5rem 2rem;
+            background: var(--smoke);
+            border-radius: 12px;
+            transition: all 0.3s;
+        }
+
+        .flow-step:hover {
+            background: var(--cloud);
+            transform: scale(1.02);
+        }
+
+        .flow-arrow {
+            font-size: 2rem;
+            color: var(--gold);
+            animation: arrow-pulse 1.5s infinite;
+        }
+
+        @keyframes arrow-pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .flow-icon {
+            font-size: 2rem;
+        }
+
+        .flow-text h4 {
+            color: var(--gold);
+            font-size: 1.1rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .flow-text p {
+            color: rgba(255,255,255,0.5);
+            font-size: 0.9rem;
+        }
+
+        /* Anchors Grid */
+        .anchors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 3rem;
+        }
+
+        .anchor-type {
+            text-align: center;
+            padding: 2rem 1.5rem;
+            background: linear-gradient(145deg, rgba(212, 175, 55, 0.08) 0%, rgba(212, 175, 55, 0.02) 100%);
+            border: 1px solid rgba(212, 175, 55, 0.15);
+            border-radius: 16px;
+            transition: all 0.3s;
+        }
+
+        .anchor-type:hover {
+            transform: translateY(-5px);
+            border-color: rgba(212, 175, 55, 0.4);
+        }
+
+        .anchor-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+            border-radius: 50%;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--ink);
+            margin-bottom: 1rem;
+        }
+
+        .anchor-type h4 {
+            color: var(--gold-light);
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .anchor-type p {
+            color: rgba(255,255,255,0.5);
+            font-size: 0.85rem;
+        }
+
+        /* CTA Section */
+        .cta {
+            text-align: center;
+            padding: 8rem 2rem;
+        }
+
+        .cta-box {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 4rem;
+            background: linear-gradient(145deg, rgba(212, 175, 55, 0.08) 0%, rgba(255, 107, 53, 0.05) 100%);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-box::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(from 0deg, transparent 0deg, rgba(212, 175, 55, 0.1) 60deg, transparent 120deg);
+            animation: rotate 20s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .cta-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .cta-title {
+            font-size: 2rem;
+            color: var(--gold);
+            margin-bottom: 1rem;
+        }
+
+        .cta-desc {
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 2rem;
+        }
+
+        .code-block {
+            background: var(--ink);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: left;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+            overflow-x: auto;
+        }
+
+        .code-comment {
+            color: rgba(255,255,255,0.4);
+        }
+
+        .code-command {
+            color: var(--gold);
+        }
+
+        .cta-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 1rem 2.5rem;
+            background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+            color: var(--ink);
+            text-decoration: none;
+            font-family: 'Cinzel', serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border-radius: 50px;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .cta-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 40px rgba(212, 175, 55, 0.3);
+        }
+
+        .cta-button svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 4rem 2rem;
+            border-top: 1px solid rgba(212, 175, 55, 0.1);
+            position: relative;
+            z-index: 2;
+        }
+
+        .footer-quote {
+            font-size: 1.5rem;
+            color: var(--gold);
+            margin-bottom: 1rem;
+            letter-spacing: 0.1em;
+        }
+
+        .footer-text {
+            color: rgba(255,255,255,0.4);
+            font-size: 0.9rem;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .footer-links a {
+            color: rgba(255,255,255,0.5);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer-links a:hover {
+            color: var(--gold);
+        }
+
+        /* Architecture Diagram */
+        .architecture {
+            max-width: 900px;
+            margin: 4rem auto 0;
+            padding: 2rem;
+            background: var(--smoke);
+            border-radius: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: rgba(255,255,255,0.7);
+            overflow-x: auto;
+        }
+
+        .architecture pre {
+            white-space: pre;
+        }
+
+        .arch-highlight {
+            color: var(--gold);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .pipeline-stage {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .flow-step {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .root-card {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="ink-wash"></div>
+
+    <div class="particles">
+        <script>
+            for(let i = 0; i < 30; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 8 + 's';
+                particle.style.animationDuration = (6 + Math.random() * 4) + 's';
+                document.querySelector('.particles').appendChild(particle);
+            }
+        </script>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1 class="chinese-title">悟空</h1>
+        <p class="subtitle">Multi-Agent Framework for Claude Code</p>
+        <p class="tagline">六根并行，四柱守护<br>赋予 Claude Code 记忆，教它反思，让它持续进化</p>
+
+        <div class="scroll-hint">
+            <span>探索</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12l7 7 7-7"/>
+            </svg>
+        </div>
+    </section>
+
+    <!-- Six Roots Section -->
+    <section class="six-roots" id="roots">
+        <h2 class="section-title">六根系统</h2>
+        <p class="section-subtitle">Six Roots — Specialized Agents for Complex Engineering</p>
+
+        <div class="roots-container">
+            <div class="root-card">
+                <span class="root-icon">👁️</span>
+                <h3 class="root-name">Explorer <span class="chinese">眼</span></h3>
+                <p class="root-role">Observe · Search · Discover</p>
+                <p class="root-desc">探索代码库，搜索文件，分析依赖关系。以敏锐的观察力发现隐藏的模式和关系。</p>
+                <div class="root-keywords">
+                    <span class="keyword">代码探索</span>
+                    <span class="keyword">文件搜索</span>
+                    <span class="keyword">依赖分析</span>
+                </div>
+            </div>
+
+            <div class="root-card">
+                <span class="root-icon">👂</span>
+                <h3 class="root-name">Analyst <span class="chinese">耳</span></h3>
+                <p class="root-role">Listen · Understand · Clarify</p>
+                <p class="root-desc">倾听需求，理解意图，澄清边界。将模糊的想法转化为清晰的规范。</p>
+                <div class="root-keywords">
+                    <span class="keyword">需求分析</span>
+                    <span class="keyword">边界澄清</span>
+                    <span class="keyword">意图理解</span>
+                </div>
+            </div>
+
+            <div class="root-card">
+                <span class="root-icon">👃</span>
+                <h3 class="root-name">Reviewer <span class="chinese">鼻</span></h3>
+                <p class="root-role">Sense · Audit · Detect</p>
+                <p class="root-desc">嗅出代码异味，审计安全隐患，检测合规问题。守护代码质量的最后防线。</p>
+                <div class="root-keywords">
+                    <span class="keyword">代码审查</span>
+                    <span class="keyword">安全扫描</span>
+                    <span class="keyword">合规检测</span>
+                </div>
+            </div>
+
+            <div class="root-card">
+                <span class="root-icon">👅</span>
+                <h3 class="root-name">Tester <span class="chinese">舌</span></h3>
+                <p class="root-role">Express · Document · Verify</p>
+                <p class="root-desc">编写测试，撰写文档，验证API规范。用精准的语言表达系统的每个细节。</p>
+                <div class="root-keywords">
+                    <span class="keyword">测试编写</span>
+                    <span class="keyword">文档撰写</span>
+                    <span class="keyword">API验证</span>
+                </div>
+            </div>
+
+            <div class="root-card">
+                <span class="root-icon">⚔️</span>
+                <h3 class="root-name">Implementer <span class="chinese">身</span></h3>
+                <p class="root-role">Execute · Build · Act</p>
+                <p class="root-desc">实现功能，修复Bug，构建特性。将设计转化为可运行的代码。</p>
+                <div class="root-keywords">
+                    <span class="keyword">代码实现</span>
+                    <span class="keyword">Bug修复</span>
+                    <span class="keyword">特性构建</span>
+                </div>
+            </div>
+
+            <div class="root-card">
+                <span class="root-icon">🧠</span>
+                <h3 class="root-name">Architect <span class="chinese">意</span></h3>
+                <p class="root-role">Think · Design · Decide</p>
+                <p class="root-desc">思考系统设计，做出技术决策，规划架构演进。统筹全局的智慧中枢。</p>
+                <div class="root-keywords">
+                    <span class="keyword">系统设计</span>
+                    <span class="keyword">技术决策</span>
+                    <span class="keyword">架构规划</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="architecture">
+            <pre>
+┌─────────────────────────────────────────────────────────────────┐
+│                           <span class="arch-highlight">User</span>                                   │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    <span class="arch-highlight">Wukong Coordinator</span>                            │
+│      Task Decomposition · Agent Dispatch · Verification          │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │
+            ┌───────────────┼───────────────┐
+            ▼               ▼               ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│   <span class="arch-highlight">Six Roots</span>      │ │   <span class="arch-highlight">Verification</span>   │ │   <span class="arch-highlight">Knowledge</span>     │
+│   Agent System   │ │   Pipeline       │ │   System        │
+│  Parallel Exec   │ │  Rules+Evidence  │ │  Reflect+Store  │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
+            </pre>
+        </div>
+    </section>
+
+    <!-- Pipeline Section -->
+    <section class="pipeline" id="pipeline">
+        <h2 class="section-title">验证流水线</h2>
+        <p class="section-subtitle">Verification Pipeline — Quality Double Insurance</p>
+
+        <div class="pipeline-visual">
+            <div class="pipeline-flow">
+                <div class="pipeline-stage">
+                    <div class="stage-icon">📤</div>
+                    <div class="stage-content">
+                        <h3>Agent Output</h3>
+                        <p>六根系统产出的工作成果，进入验证流水线</p>
+                    </div>
+                </div>
+
+                <div class="pipeline-stage">
+                    <div class="stage-icon">📋</div>
+                    <div class="stage-content">
+                        <h3>Compliance Check</h3>
+                        <p>规则边界检查 · Do/Don't边界验证 · 敏感信息扫描</p>
+                    </div>
+                </div>
+
+                <div class="pipeline-stage">
+                    <div class="stage-icon">🔬</div>
+                    <div class="stage-content">
+                        <h3>Reproducibility Verification</h3>
+                        <p>证据等级验证 · No evidence = Not done</p>
+                    </div>
+                </div>
+
+                <div class="pipeline-stage">
+                    <div class="stage-icon">✅</div>
+                    <div class="stage-content">
+                        <h3>Delivery</h3>
+                        <p>通过验证的成果，安全交付给用户</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="evidence-levels">
+                <div class="evidence-card reject">
+                    <div class="evidence-level">L0</div>
+                    <div class="evidence-name">Speculation</div>
+                    <div style="color: rgba(255,255,255,0.4); font-size: 0.8rem; margin-top: 0.5rem;">❌ 拒绝</div>
+                </div>
+                <div class="evidence-card conditional">
+                    <div class="evidence-level">L1</div>
+                    <div class="evidence-name">Reference</div>
+                    <div style="color: rgba(255,255,255,0.4); font-size: 0.8rem; margin-top: 0.5rem;">⚠️ 有条件接受</div>
+                </div>
+                <div class="evidence-card accept">
+                    <div class="evidence-level">L2</div>
+                    <div class="evidence-name">Local Test</div>
+                    <div style="color: rgba(255,255,255,0.4); font-size: 0.8rem; margin-top: 0.5rem;">✅ 接受</div>
+                </div>
+                <div class="evidence-card trust">
+                    <div class="evidence-level">L3</div>
+                    <div class="evidence-name">CI Pass</div>
+                    <div style="color: rgba(255,255,255,0.4); font-size: 0.8rem; margin-top: 0.5rem;">✅✅ 完全信任</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Knowledge Section -->
+    <section class="knowledge" id="knowledge">
+        <h2 class="section-title">知识循环</h2>
+        <p class="section-subtitle">Knowledge Loop — Gets Smarter Over Time</p>
+
+        <div class="knowledge-flow">
+            <div class="flow-step">
+                <span class="flow-icon">⚙️</span>
+                <div class="flow-text">
+                    <h4>Work Process</h4>
+                    <p>执行任务过程中的所有活动</p>
+                </div>
+            </div>
+
+            <div class="flow-arrow">↓</div>
+
+            <div class="flow-step">
+                <span class="flow-icon">🔍</span>
+                <div class="flow-text">
+                    <h4>Reflect</h4>
+                    <p>偏差扫描 · 检测假设与盲点</p>
+                </div>
+            </div>
+
+            <div class="flow-arrow">↓</div>
+
+            <div class="flow-step">
+                <span class="flow-icon">💾</span>
+                <div class="flow-text">
+                    <h4>Store</h4>
+                    <p>锚点存储 · 决策/约束/问题/模式</p>
+                </div>
+            </div>
+
+            <div class="flow-arrow">↓</div>
+
+            <div class="flow-step">
+                <span class="flow-icon">🔄</span>
+                <div class="flow-text">
+                    <h4>Feed Back</h4>
+                    <p>惯性提示 · 历史决策与已知陷阱自动注入</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="anchors-grid">
+            <div class="anchor-type">
+                <div class="anchor-badge">D</div>
+                <h4>Decisions</h4>
+                <p>记录技术决策的背景与原因</p>
+            </div>
+            <div class="anchor-type">
+                <div class="anchor-badge">C</div>
+                <h4>Constraints</h4>
+                <p>存储系统约束与限制条件</p>
+            </div>
+            <div class="anchor-type">
+                <div class="anchor-badge">P</div>
+                <h4>Problems</h4>
+                <p>标记已知问题，避免重蹈覆辙</p>
+            </div>
+            <div class="anchor-type">
+                <div class="anchor-badge">M</div>
+                <h4>Patterns</h4>
+                <p>沉淀可复用的解决方案模式</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta" id="start">
+        <div class="cta-box">
+            <div class="cta-content">
+                <h2 class="cta-title">开始使用 Wukong</h2>
+                <p class="cta-desc">一行命令，让你的 Claude Code 脱胎换骨</p>
+
+                <div class="code-block">
+                    <span class="code-comment"># 克隆仓库</span><br>
+                    <span class="code-command">git clone https://github.com/anthropics/wukong.git</span><br>
+                    <span class="code-command">cd wukong</span><br><br>
+                    <span class="code-comment"># 安装到你的项目</span><br>
+                    <span class="code-command">./install.sh /path/to/your/project</span><br><br>
+                    <span class="code-comment"># 激活悟空</span><br>
+                    <span class="code-command">/wukong</span>
+                </div>
+
+                <a href="https://github.com/WQ09CE/wukong" class="cta-button" target="_blank">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    View on GitHub
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <p class="footer-quote">六根并行，四柱守护</p>
+        <p class="footer-text">Six Roots in Parallel, Four Pillars Standing Guard</p>
+        <p class="footer-text" style="margin-top: 1rem;">Making Claude Code better and smarter with every use</p>
+
+        <div class="footer-links">
+            <a href="https://github.com/WQ09CE/wukong">GitHub</a>
+            <a href="https://github.com/WQ09CE/wukong/blob/main/README-zh.md">中文文档</a>
+            <a href="https://github.com/WQ09CE/wukong/blob/main/LICENSE">MIT License</a>
+        </div>
+    </footer>
+
+    <script>
+        // Intersection Observer for scroll animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.root-card, .pipeline-stage, .flow-step, .anchor-type').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(30px)';
+            el.style.transition = 'all 0.6s ease-out';
+            observer.observe(el);
+        });
+
+        // Stagger animation for cards
+        document.querySelectorAll('.root-card').forEach((card, i) => {
+            card.style.transitionDelay = `${i * 0.1}s`;
+        });
+    </script>
+</body>
+</html>
