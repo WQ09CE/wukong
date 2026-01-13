@@ -1,10 +1,17 @@
 # Wukong
 
-> Multi-Agent Orchestration Framework for Claude Code
+> **Six Roots in Parallel, Four Pillars Standing Guard**
 
-A framework that transforms Claude Code into a coordinated engineering team through **specialized agents**, **verification pipelines**, and **persistent knowledge management**.
+Give Claude Code memory, teach it reflection, enable continuous evolution.
 
-## Core Architecture
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![中文文档](https://img.shields.io/badge/docs-%E4%B8%AD%E6%96%87-blue)](README-zh.md)
+
+---
+
+## What is Wukong?
+
+**Wukong** is a multi-agent orchestration framework designed specifically for Claude Code. It transforms a single AI assistant into a **coordinated engineering team** with specialized roles, and through its innovative **verification pipeline** and **knowledge persistence system**, makes your AI assistant smarter over time.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -13,106 +20,134 @@ A framework that transforms Claude Code into a coordinated engineering team thro
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Coordinator (Main Agent)                      │
-│  • Task decomposition  • Agent dispatch  • Result verification   │
+│                    Wukong Coordinator                            │
+│      Task Decomposition · Agent Dispatch · Verification          │
 └───────────────────────────┬─────────────────────────────────────┘
                             │
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   Specialized Agents (6 Types)                   │
-│  Explorer   Analyst   Reviewer   Tester   Implementer  Architect │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Verification Pipeline                         │
-│   Compliance ──→ Reproducibility ──→ Reflection ──→ Storage     │
-└─────────────────────────────────────────────────────────────────┘
+            ┌───────────────┼───────────────┐
+            ▼               ▼               ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│   Six Roots      │ │   Verification   │ │   Knowledge     │
+│   Agent System   │ │   Pipeline       │ │   System        │
+│  Parallel Exec   │ │  Rules+Evidence  │ │  Reflect+Store  │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
 ```
 
-## Design Principles
+---
 
-### 1. Separation of Concerns
+## Three Core Highlights
 
-Each agent has a strictly defined:
-- **Responsibility Boundary** - What it can/cannot do
-- **Output Contract** - Standardized output format
-- **Tool Allowlist** - Permitted tool access
+### 1. Six Roots - Multi-Agent Collaboration for Complex Engineering
 
-| Agent | Role | Can Do | Cannot Do | Tools |
-|-------|------|--------|-----------|-------|
-| Explorer | Search & Discovery | Search, locate files | Modify code | Glob, Grep, Read |
-| Analyst | Requirements | Clarify requirements, define AC | Design or implement | Read |
-| Reviewer | Code Review | Audit, scan issues | Fix code | Read, Grep |
-| Tester | Testing & Docs | Write tests, documentation | Implement features | Read, Write, Bash |
-| Implementer | Implementation | Write code, fix bugs | Skip verification | All |
-| Architect | Design | System design, decisions | Write implementation | Read, Write(md) |
+> One command, automatic task decomposition, parallel execution, aggregated results
 
-### 2. Verification Pipeline
+Inspired by the Buddhist concept of "Six Roots" (six sense organs), Wukong decomposes complex engineering tasks across six specialized agents:
 
-Every agent output passes through a 4-stage verification:
+| Root | Agent | Responsibility | Best For |
+|:----:|-------|----------------|----------|
+| 👁️ Eye | Explorer | Observe · Search · Discover | Codebase exploration, file search, dependency analysis |
+| 👂 Ear | Analyst | Listen · Understand · Clarify | Requirements analysis, boundary clarification |
+| 👃 Nose | Reviewer | Sense · Audit · Detect | Code review, security scanning, compliance |
+| 👅 Tongue | Tester | Express · Document · Verify | Test writing, documentation, API specs |
+| ⚔️ Body | Implementer | Execute · Build · Act | Code implementation, bug fixes, features |
+| 🧠 Mind | Architect | Think · Design · Decide | System design, tech decisions, architecture |
 
-```
-Agent Output ──→ Compliance ──→ Reproducibility ──→ Reflection ──→ Storage
-                    │                │                  │            │
-                 Contract         Evidence           Extract       Persist
-                 checking         levels             insights      anchors
-```
-
-**Evidence Levels:**
-| Level | Description | Trust |
-|-------|-------------|-------|
-| L0 | Speculation ("should work...") | ❌ Reject |
-| L1 | Reference (docs, comments) | ⚠️ Conditional |
-| L2 | Local verification (tests pass) | ✅ Accept |
-| L3 | Integration verification (CI pass) | ✅✅ Full trust |
-
-### 3. Persistent Knowledge (Anchors)
-
-Critical decisions persist across sessions as **anchors**:
-
-| Type | Prefix | Purpose |
-|------|--------|---------|
-| Decision | D | Architecture/tech decisions |
-| Constraint | C | Rules that must be followed |
-| Interface | I | Key API definitions |
-| Problem | P | Known issues/pitfalls |
-| Pattern | M | Reusable patterns |
-
-### 4. Parallel Execution
-
-Independent tasks execute concurrently:
-- **Max parallelism**: 3-4 agents
-- **Same file**: Must serialize
-- **Dependencies**: Execute in order
-
-**Mandatory parallelization:**
-- Modifying ≥2 independent files → One agent per file
-- ≥2 independent modules → One agent per module
-
-### 5. Context Management
-
-Three context compression levels:
-
-| Level | Size | Use Case |
-|-------|------|----------|
-| Expanded | Unlimited | Complex debugging |
-| Normal | 500-2000 chars | Regular work |
-| Compact | <500 chars | Cross-session, agent handoff |
-
-### 6. Feedback Loop
-
-Knowledge flows back to agents before task execution:
-
-- **T1 (Pre-task)**: Query Problems/Constraints/Patterns → Risk warnings
-- **T2 (Post-design)**: Query Decisions/Interfaces → Historical context
-
-## Installation
+**Intelligent Scheduling:**
+- **Cost-Aware Routing** - CHEAP agents run 10+ in parallel, EXPENSIVE agents block for quality
+- **Dynamic Tracks** - Feature/Fix/Refactor auto-selects optimal workflow
+- **Extensible** - Custom skill files enable unlimited capability expansion
 
 ```bash
-# Clone and install
+# Explicit agent dispatch
+/wukong @explorer search for authentication implementation
+/wukong @architect design a caching strategy
+/wukong @implementer implement the login endpoint
+
+# Automatic track selection
+/wukong add user authentication    # → Feature track: Ear→Mind→Body→Tongue→Nose
+/wukong fix the login bug          # → Fix track: Eye→Body→Tongue
+```
+
+---
+
+### 2. Verification Pipeline - Double Insurance for Quality
+
+> Say goodbye to "it should work" - every conclusion backed by verifiable evidence
+
+```
+Agent Output ──→ Compliance ──→ Reproducibility ──→ Delivery
+                    │                │
+                    │                └─ Evidence Level Check
+                    │                   L0 Speculation → ❌ Reject
+                    │                   L1 Reference   → ⚠️ Conditional
+                    │                   L2 Local Test  → ✅ Accept
+                    │                   L3 CI Pass     → ✅✅ Full Trust
+                    │
+                    └─ Contract Completeness
+                       Do/Don't Boundary Check
+                       Sensitive Info Scanning
+```
+
+| Module | Role | Golden Rule |
+|--------|------|-------------|
+| **Compliance** | Rule boundary checking | Violations get rejected, no exceptions |
+| **Reproducibility** | Evidence verification | **No evidence = Not done** |
+
+**Auto-Intercepted Red Flags:**
+- "Should work..." / "Probably can..." → L0 speculation, blocked
+- "No problem" / "Should be fine" → Optimism bias, requires test evidence
+
+---
+
+### 3. Knowledge Loop - Gets Smarter Over Time
+
+> Reflection + Persistence = Continuously Evolving AI Assistant
+
+```
+Work Process ──→ Reflect ──→ Store ──→ Feed Back to Next Decision
+                   │           │              │
+                   │           │              └─ Inertia Prompts
+                   │           │                 Past decisions / Known pitfalls
+                   │           │
+                   │           └─ Anchor Storage
+                   │              [D] Decisions / [C] Constraints
+                   │              [P] Problems  / [M] Patterns
+                   │
+                   └─ Bias Scanning
+                      Detect assumptions / blind spots
+```
+
+| Capability | Description |
+|------------|-------------|
+| **Cross-Session Memory** | Multi-session isolation, user-level knowledge persistence |
+| **Introspection** | Review and summarize work across any time span |
+| **Inertia Prompts** | Past decisions and known pitfalls auto-injected into new tasks |
+| **Three-Level Compression** | Expanded→Normal→Compact, smart context window management |
+
+```bash
+# Introspection commands
+/wukong introspect today      # Generate today's work report
+/wukong introspect this week  # Generate weekly summary
+/wukong anchors               # View all persisted decisions/problems/patterns
+```
+
+**User Value:**
+- Never repeat mistakes - Problem anchors [P] auto-remind
+- Decisions are traceable - Decision anchors [D] record context
+- Patterns are reusable - Pattern anchors [M] persist across projects
+
+---
+
+## Quick Start
+
+### Installation
+
+```bash
+# Clone the repository
 git clone https://github.com/anthropics/wukong.git
 cd wukong
+
+# Install to your project
 ./install.sh /path/to/your/project
 
 # Or install to current directory
@@ -120,95 +155,71 @@ cd wukong
 ```
 
 The installer will:
-1. Copy rules, skills, and commands to `.claude/`
+1. Copy rules, skills, and commands to `.claude/` in your project
 2. Install hooks to `~/.wukong/hooks/`
-3. Register hooks in `~/.claude/settings.json` (with confirmation)
+3. Register PreCompact Hook in `~/.claude/settings.json` (with confirmation)
 
-## Usage
-
-### Direct Agent Dispatch
+### Usage
 
 ```bash
-/wukong @explorer search for authentication code
-/wukong @architect design a caching layer
-/wukong @implementer implement the login endpoint
-/wukong @reviewer audit this PR
+# Activate Wukong
+/wukong
+
+# Start working
+/wukong add user login feature
 ```
 
-### Automatic Workflow Selection
+---
 
-```bash
-/wukong add user authentication    # → Feature workflow
-/wukong fix the login bug          # → Fix workflow
-/wukong refactor the auth module   # → Refactor workflow
-```
+## Comparison
 
-### Context Commands
+| Feature | Vanilla Claude Code | Wukong |
+|---------|---------------------|--------|
+| Task Execution | Single Agent | Six specialized agents in parallel |
+| Output Verification | None | Dual verification pipeline |
+| Context Management | Auto-compact with loss | Three-level compression + PreCompact save |
+| Cross-Session Memory | None | Anchor system + Inertia prompts |
+| Self-Reflection | None | Bias scanning + Introspection |
+| Knowledge Persistence | None | Decisions/Problems/Patterns stored |
 
-| Command | Action |
-|---------|--------|
-| `/wukong reflect` | Extract insights and anchors |
-| `/wukong compress` | Generate compact summary |
-| `/wukong archive` | Save session to storage |
-| `/wukong load {name}` | Restore previous session |
-| `/wukong anchors` | Show all anchors |
+---
 
 ## Project Structure
 
-**Repository source (for development):**
 ```
 wukong/
-├── wukong-dist/            # Distribution source (non-hidden)
-│   ├── rules/              # Core rules
-│   ├── skills/             # Agent skill definitions
-│   ├── commands/           # Command handlers
-│   ├── hooks/              # PreCompact hooks
-│   ├── context/templates/  # Context templates
-│   └── templates/          # Other templates
+├── wukong-dist/              # Distribution source
+│   ├── rules/                # Core rules (Compliance)
+│   ├── skills/               # Agent skill definitions
+│   ├── commands/             # Command handlers
+│   └── hooks/                # PreCompact Hook (Reflection)
 │
-├── install.sh              # Installer script
-└── README.md
-```
+├── install.sh                # Installer script
+├── README.md                 # English README
+└── README-zh.md              # Chinese README
 
-**After installation (target project):**
-```
-your-project/
-├── .claude/
-│   ├── rules/              # Auto-loaded rules
-│   ├── skills/             # Agent skill definitions
-│   └── commands/           # Command handlers
-│
-└── .wukong/
-    ├── context/
-    │   ├── anchors.md      # Persistent anchors
-    │   ├── index.json      # Session index
-    │   └── sessions/       # Session archives
-    └── plans/              # Design documents
-
+# User directory after installation
 ~/.wukong/
-└── hooks/                  # Global hooks
+├── hooks/                    # Global hooks
+└── context/                  # Knowledge storage
+    ├── active/               # Active sessions
+    ├── sessions/             # Session archives
+    ├── anchors/              # Anchor storage
+    └── index.json            # Session index
 ```
 
-## Key Constraints
+---
 
-**Coordinator MUST delegate:**
-- Multi-file exploration → Explorer (background)
-- Code changes >10 lines → Implementer
-- File creation → Implementer
-- Build/test execution → Tester or Implementer
+## Design Philosophy
 
-**Coordinator MAY handle directly:**
-- Reading 1-2 files
-- Single Glob/Grep query
-- Simple verification checks
-- User communication
+Wukong's design draws from Eastern philosophy:
 
-## Documentation
+- **Six Roots (六根)** - Buddhist concept of six sense organs, mapped to six specialized agents
+- **Three Trainings (戒定慧)** - Buddhist practice of discipline, concentration, and wisdom, mapped to the verification pipeline
+- **Store Consciousness (识)** - Buddhist concept of repository consciousness, mapped to the knowledge storage system
+- **Manas (末那识)** - Buddhist concept of ego-consciousness, mapped to bias detection
 
-- [System Overview](wukong-dist/plans/wukong-system-overview.md)
-- [Core Rules](wukong-dist/rules/00-wukong-core.md)
-- [Agent Skills](wukong-dist/skills/)
-- [Mythology Version](README-mythology.md) - With Eastern philosophy terminology
+---
 
 ## References
 
@@ -218,3 +229,10 @@ your-project/
 ## License
 
 MIT
+
+---
+
+<p align="center">
+  <b>Six Roots in Parallel, Four Pillars Standing Guard</b><br>
+  Making Claude Code better and smarter with every use
+</p>
