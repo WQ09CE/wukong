@@ -110,9 +110,19 @@ Knowledge flows back to agents before task execution:
 ## Installation
 
 ```bash
-pip install wukong-cli
-wukong install /path/to/project
+# Clone and install
+git clone https://github.com/anthropics/wukong.git
+cd wukong
+./install.sh /path/to/your/project
+
+# Or install to current directory
+./install.sh
 ```
+
+The installer will:
+1. Copy rules, skills, and commands to `.claude/`
+2. Install hooks to `~/.wukong/hooks/`
+3. Register hooks in `~/.claude/settings.json` (with confirmation)
 
 ## Usage
 

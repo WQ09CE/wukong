@@ -540,48 +540,57 @@ def generate_anchor_candidates(
     constraints: list[dict],
     problems: list[dict]
 ) -> list[dict]:
-    """生成候选锚点"""
+    """生成候选锚点（带内容验证）"""
     candidates = []
 
     # 决策锚点
     for i, d in enumerate(decisions):
+        content = d['content']
+        if not _is_valid_anchor_content(content, 'decision'):
+            continue
         candidates.append({
             'id': f'D_candidate_{i}',
             'type': 'decision',
-            'title': _extract_title(d['content'], 'decision'),
-            'content': d['content'][:200],
+            'title': _extract_title(content, 'decision'),
+            'content': content[:300],
             'threshold_check': {
-                'frequency': 1,  # 初始频率为1
-                'impact': True,  # 决策默认有影响
-                'reusable': False,  # 需要外部检查
+                'frequency': 1,
+                'impact': _detect_impact(content),
+                'reusable': _detect_reusable(content, 'decision'),
             }
         })
 
     # 问题锚点
     for i, p in enumerate(problems):
+        content = p['content']
+        if not _is_valid_anchor_content(content, 'problem'):
+            continue
         candidates.append({
             'id': f'P_candidate_{i}',
             'type': 'problem',
-            'title': _extract_title(p['content'], 'problem'),
-            'content': p['content'][:200],
+            'title': _extract_title(content, 'problem'),
+            'content': content[:300],
             'threshold_check': {
                 'frequency': 1,
-                'impact': True,
-                'reusable': True,  # 问题通常可复用
+                'impact': _detect_impact(content),
+                'reusable': _detect_reusable(content, 'problem'),
             }
         })
 
     # 约束锚点
     for i, c in enumerate(constraints):
+        content = c['content']
+        if not _is_valid_anchor_content(content, 'constraint'):
+            continue
         candidates.append({
             'id': f'C_candidate_{i}',
             'type': 'constraint',
-            'title': _extract_title(c['content'], 'constraint'),
-            'content': c['content'][:200],
+            'title': _extract_title(content, 'constraint'),
+            'content': content[:300],
             'threshold_check': {
                 'frequency': 1,
-                'impact': True,  # 约束默认有影响
-                'reusable': True,
+                'impact': _detect_impact(content),
+                'reusable': _detect_reusable(content, 'constraint'),
             }
         })
 
@@ -590,14 +599,93 @@ def generate_anchor_candidates(
 
 def _extract_title(content: str, anchor_type: str) -> str:
     """从内容中提取标题"""
-    # 取第一行或前50个字符作为标题
-    first_line = content.split('\n')[0].strip()
-    # 移除常见前缀
-    first_line = re.sub(r'^[\-\*\d\.]+\s*', '', first_line)
-    # 限制长度
-    if len(first_line) > 50:
-        first_line = first_line[:47] + '...'
-    return first_line or f'{anchor_type}_untitled'
+    lines = content.split('\n')
+
+    # 1. 优先查找 markdown 标题格式
+    for line in lines[:5]:
+        line = line.strip()
+        md_title = re.match(r'^#{1,3}\s+(.+)$', line)
+        if md_title:
+            title = md_title.group(1).strip()
+            return title[:50] if len(title) <= 50 else title[:47] + '...'
+
+        bold_title = re.match(r'^\*\*(.+?)\*\*', line)
+        if bold_title:
+            title = bold_title.group(1).strip()
+            return title[:50] if len(title) <= 50 else title[:47] + '...'
+
+    # 2. 排除对话开头，找第一个有意义的行
+    skip_prefixes = (
+        '完成', '好的', '好，', '是的', '没问题', '已', '我',
+        'Done', 'OK', 'Yes', 'I\'ll', 'I will', 'Let me', 'You are',
+        'This', 'The ', 'Here', '```',
+    )
+
+    for line in lines[:10]:
+        line = line.strip()
+        if not line or len(line) < 5:
+            continue
+        if any(line.startswith(p) for p in skip_prefixes):
+            continue
+        line = re.sub(r'^[\-\*\d\.]+\s*', '', line)
+        return line[:50] if len(line) <= 50 else line[:47] + '...'
+
+    return f'{anchor_type}_untitled'
+
+
+# ============================================================
+# 锚点内容验证 (Anchor Content Validation)
+# ============================================================
+
+CONVERSATION_PREFIXES = (
+    '完成', '好的', '好，', '是的', '没问题', '已经', '我来', '我会', '让我',
+    '现在', '接下来', '首先', '然后', '最后', '总结',
+    'Done', 'OK', 'Yes', 'I\'ll', 'I will', 'I\'m', 'Let me', 'Now',
+    'You are', 'This command', 'Here is', 'Here are', '```',
+)
+
+ANCHOR_STRUCTURE_KEYWORDS = {
+    'decision': ['context', 'decision', 'impact', 'evidence', '背景', '决策', '影响', '原因'],
+    'problem': ['症状', '根因', '解决', '预防', 'symptom', 'root cause', 'solution', 'prevention'],
+    'constraint': ['约束', '必须', '禁止', 'must', 'never', 'always', 'constraint'],
+}
+
+IMPACT_KEYWORDS = [
+    '架构', '安全', '性能', '多模块', '全局', '核心', '关键',
+    'architecture', 'security', 'performance', 'global', 'core', 'critical',
+]
+
+
+def _is_valid_anchor_content(content: str, anchor_type: str) -> bool:
+    """验证内容是否适合作为锚点"""
+    if not content or len(content.strip()) < 50:
+        return False
+
+    first_line = content.strip().split('\n')[0].strip()
+    if any(first_line.startswith(p) for p in CONVERSATION_PREFIXES):
+        return False
+
+    keywords = ANCHOR_STRUCTURE_KEYWORDS.get(anchor_type, [])
+    if keywords:
+        content_lower = content.lower()
+        if not any(kw.lower() in content_lower for kw in keywords):
+            return False
+
+    return True
+
+
+def _detect_impact(content: str) -> bool:
+    """检测内容是否涉及重大影响"""
+    content_lower = content.lower()
+    return any(kw.lower() in content_lower for kw in IMPACT_KEYWORDS)
+
+
+def _detect_reusable(content: str, anchor_type: str) -> bool:
+    """检测内容是否可复用"""
+    if anchor_type == 'problem':
+        return True
+    reusable_keywords = ['模式', '通用', '最佳实践', 'pattern', 'generic', 'best practice']
+    return any(kw.lower() in content.lower() for kw in reusable_keywords)
 
 
 # ============================================================
@@ -662,12 +750,12 @@ def generate_hui_output(
 
 def check_threshold(anchor: dict) -> bool:
     """
-    检查锚点是否通过写入门槛。
+    检查锚点是否通过写入门槛（严格版）。
 
     门槛条件 (至少满足一项):
     - frequency >= 2: 类似问题/决策出现两次以上
-    - impact = True: 涉及架构、安全、性能、多模块
-    - reusable = True: 在其他项目/场景中有参考价值
+    - impact = True AND 内容长度 >= 100
+    - reusable = True AND anchor_type == 'problem' AND 有解决方案
 
     Args:
         anchor: 锚点字典，包含 threshold_check 字段
@@ -676,19 +764,24 @@ def check_threshold(anchor: dict) -> bool:
         bool: 是否通过门槛
     """
     threshold = anchor.get('threshold_check', {})
+    anchor_type = anchor.get('type', '')
+    content = anchor.get('content', '')
 
-    # 频率检查
+    # 1. 频率检查 (最可靠)
     frequency = threshold.get('frequency', 0)
     if isinstance(frequency, int) and frequency >= 2:
         return True
 
-    # 影响检查
-    if threshold.get('impact', False):
+    # 2. 影响检查 (需配合内容长度)
+    if threshold.get('impact', False) and len(content) >= 100:
         return True
 
-    # 可复用检查
-    if threshold.get('reusable', False):
-        return True
+    # 3. 可复用检查 (只对 problem 类型 + 有解决方案生效)
+    if threshold.get('reusable', False) and anchor_type == 'problem':
+        content_lower = content.lower()
+        has_solution = any(kw in content_lower for kw in ['解决', '修复', '预防', 'fix', 'solution', 'resolve'])
+        if has_solution:
+            return True
 
     return False
 

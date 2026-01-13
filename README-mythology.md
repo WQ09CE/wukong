@@ -81,20 +81,20 @@
 
 ## 安装
 
-### CLI 安装 (推荐)
-
 ```bash
-pip install wukong-cli
-wukong install /path/to/project
-```
-
-### 脚本安装
-
-```bash
+# 克隆并安装
 git clone https://github.com/anthropics/wukong.git
 cd wukong
-./install.sh /path/to/project
+./install.sh /path/to/your/project
+
+# 或安装到当前目录
+./install.sh
 ```
+
+安装器会自动：
+1. 复制规则、技能、命令到 `.claude/`
+2. 安装 hooks 到 `~/.wukong/hooks/`
+3. 注册 hooks 到 `~/.claude/settings.json`（需确认）
 
 ## 使用
 
