@@ -9,13 +9,21 @@ dist/
 build/
 
 # Wukong runtime data (用户特定，不应提交)
+# 旧版 (.wukong)
 .wukong/context/current/
 .wukong/context/sessions/
 .wukong/context/index.json
 .wukong/notepads/
 
+# 新版 (wukong-dist)
+wukong-dist/context/current/
+wukong-dist/context/sessions/
+wukong-dist/context/index.json
+wukong-dist/context/test-results/
+
 # Keep templates
 !.wukong/context/templates/
+!wukong-dist/context/templates/
 
 # IDE
 .idea/

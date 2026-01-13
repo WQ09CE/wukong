@@ -11,18 +11,19 @@
 - **分身**: 专业执行具体任务
 - **本体不直接写大量代码** (>50行交给斗战胜佛)
 
-## Six Roots (六根分身) - 职能三件套
+## Six Roots (六根分身) - 职能三件套 + 成本分层
 
 > **每个分身强制三件事**: 职责边界 (Do/Don't) | 输出契约 (Output Contract) | 工具权限 (Tool Allowlist)
+> **成本路由**: CHEAP (10+ 并发) → MEDIUM (2-3 并发) → EXPENSIVE (阻塞)
 
-| 六根 | 分身 | 能力 | BG | Do | Don't | Output | Max Output | Tools |
-|------|------|------|-----|----|----|--------|------------|-------|
-| 👁️ 眼 | 眼分身 | 探索·搜索 | ✓ | 搜索、定位 | 修改代码 | `{files[], findings[]}` | 20 files + 500字 | Glob,Grep,Read |
-| 👂 耳 | 耳分身 | 需求·理解 | - | 澄清需求、AC | 实现设计 | `{goal, AC[], constraints[]}` | 1000字 | Read |
-| 👃 鼻 | 鼻分身 | 审查·检测 | ✓ | 审查、扫描 | 修复代码 | `{issues[], severity}` | 10 issues | Read,Grep |
-| 👅 舌 | 舌分身 | 测试·文档 | - | 写测试文档 | 实现功能 | `{tests[], docs[]}` | 1000字 | Read,Write,Bash |
-| ⚔️ 身 | 斗战胜佛 | 实现·行动 | - | 写代码修复 | 跳过测试 | `{files_changed[], summary}` | 2000字摘要 | All |
-| 🧠 意 | 意分身 | 设计·决策 | - | 架构设计 | 写实现 | `{design, decisions[]}` | 1000字 | Read,Write(md) |
+| 六根 | 分身 | 能力 | 成本 | 最大并发 | Do | Don't | Tools |
+|------|------|------|------|----------|----|----|-------|
+| 👁️ 眼 | 眼分身 | 探索·搜索 | CHEAP | 10+ | 搜索、定位 | 修改代码 | Glob,Grep,Read |
+| 👂 耳 | 耳分身 | 需求·理解 | CHEAP | 10+ | 澄清需求、AC | 实现设计 | Read |
+| 👃 鼻 | 鼻分身 | 审查·检测 | CHEAP | 5+ | 审查、扫描 | 修复代码 | Read,Grep |
+| 👅 舌 | 舌分身 | 测试·文档 | MEDIUM | 2-3 | 写测试文档 | 实现功能 | Read,Write,Bash |
+| ⚔️ 身 | 斗战胜佛 | 实现·行动 | EXPENSIVE | 1 | 写代码修复 | 跳过测试 | All |
+| 🧠 意 | 意分身 | 设计·决策 | EXPENSIVE | 1 | 架构设计 | 写实现 | Read,Write(md) |
 
 ## 戒定慧识 (Four Pillars)
 
@@ -146,32 +147,52 @@ T2 时机 (方案冻结后):
 | **Refactor** | Refactor/Clean | 眼→意→斗战胜佛→舌 |
 | **Direct** | 简单任务 | 直接执行 |
 
-## Summoning (召唤分身)
+## Summoning (召唤分身) - 4 部分声明协议
+
+> **强制**: 没有 4 部分声明 = 协议违规 = 戒关打回
 
 ```python
-# 1. 声明
+# 1. 4 部分声明 (MANDATORY)
 """
-召唤分身:
-- 六根: [眼/耳/鼻/舌/身/意]
-- 原因: {why}
-- 产出: {expected}
+我将召唤分身:
+- **分身**: [眼/耳/鼻/舌/身/意] - {Avatar名称}
+- **原因**: [为什么选择这个分身]
+- **技能**: [需要的技能列表]
+- **预期**: [具体、可验证的成功标准]
 """
 
 # 2. 读取技能 + 获取惯性提示 + 召唤
 skill = Read(f".wukong/skills/{skill_file}.md")
 
 # 3. 注入惯性提示 (可选但推荐)
-# T1: 眼/身/舌/鼻 分身 - 任务启动前提供风险预警
-# T2: 意/身/鼻 分身 - 方案冻结后提供历史决策
 shi_prompt = get_shi_prompt_for_avatar(cwd, avatar_type, task)
 
+# 4. 使用 7 段式 Prompt (详见 orchestration.md)
 Task(prompt=f"""
 {skill}
 
 {shi_prompt}  # 惯性提示 (如果有)
 
-## TASK
+## 1. TASK
 {task}
+
+## 2. EXPECTED OUTCOME
+{expected_outcome}
+
+## 3. REQUIRED SKILLS
+{skills}
+
+## 4. REQUIRED TOOLS
+{tools}
+
+## 5. MUST DO
+{must_do}
+
+## 6. MUST NOT DO
+{must_not_do}
+
+## 7. CONTEXT
+{context}
 """, run_in_background=bg)
 ```
 
@@ -210,12 +231,12 @@ Task(prompt=f"""
 - ❌ 其他分身的完整输出
 - ❌ 大段代码（给文件路径即可）
 
-## Parallelization (筋斗云)
+## Parallelization (筋斗云) - 成本感知
 
-**并行优先**: 无依赖的任务同时执行
-- 最大并行: 3-4 个分身
-- 同一文件: 必须串行
-- 有依赖链: 按顺序执行
+**成本路由优先**:
+- CHEAP 分身 (眼/耳/鼻): 10+ 并发，必须后台
+- MEDIUM 分身 (舌): 2-3 并发
+- EXPENSIVE 分身 (身/意): 1 个阻塞，禁止后台
 
 **强制并行条件** (必须拆分并行):
 - 修改 ≥2 个独立文件 → 每文件一个分身
@@ -229,6 +250,7 @@ Task(prompt=f"""
 **禁止** (反模式):
 - ❌ 把多个独立文件修改打包给一个分身
 - ❌ 串行执行可并行的探索任务
+- ❌ EXPENSIVE 分身后台执行
 
 ## Background Mode (后台模式)
 
@@ -297,6 +319,8 @@ Task(prompt=f"""
 - **违反分身职责边界 (Do/Don't)**
 - **输出不符合 Output Contract**
 - **使用未授权的工具 (Tool Allowlist)**
+- **召唤分身时缺少 4 部分声明**
+- **批量标记 Todo 完成**
 
 **ALWAYS:**
 - 验证分身输出
@@ -305,6 +329,8 @@ Task(prompt=f"""
 - 记录重要决策
 - **分身输出后执行戒定慧检查**
 - **遵守职能三件套约束**
+- **使用 7 段式 Prompt 模板**
+- **痴迷式 Todo 追踪 (逐个标记完成)**
 
 ## Extended (扩展能力)
 

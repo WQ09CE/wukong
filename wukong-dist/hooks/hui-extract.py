@@ -1281,6 +1281,20 @@ def _run_precompact_mode():
         print("## [慧] 无对话记录可提取")
         return
 
+    # 2.5 执行恢复流水线 (三阶段上下文恢复)
+    recovery_result = run_recovery_pipeline(messages, cwd)
+
+    # 记录恢复结果
+    with open(log_path, 'a', encoding='utf-8') as log:
+        log.write(f"Recovery stage: {recovery_result['stage']}\n")
+        log.write(f"Usage ratio: {recovery_result['usage'].get('usage_ratio', 0):.2%}\n")
+        log.write(f"Session errors: {len(recovery_result['session_errors'])}\n")
+        if recovery_result.get('dcp_stats'):
+            log.write(f"DCP removed: {len(recovery_result['dcp_stats'].get('removed_tools', []))}\n")
+
+    # 使用处理后的消息（如果执行了 DCP）
+    messages = recovery_result.get('messages', messages)
+
     # 3. 提取关键信息
     task = extract_current_task(messages)
     decisions = extract_decisions(messages)
@@ -1343,8 +1357,10 @@ def _run_precompact_mode():
         log.write(f"skipped={len(shi_result['anchors_skipped'])}, ")
         log.write(f"duplicated={len(shi_result['anchors_duplicated'])}\n")
 
-    # 10. 输出给 Claude
-    output_to_claude_with_shi_result(compact_context, candidates, shi_result)
+    # 10. 输出给 Claude (包含恢复提示)
+    output_to_claude_with_recovery(
+        compact_context, candidates, shi_result, recovery_result
+    )
 
 
 def output_to_claude_with_shi_result(
@@ -1352,7 +1368,33 @@ def output_to_claude_with_shi_result(
     candidates: list[dict],
     shi_result: dict
 ):
-    """输出给 Claude，包含识模块的写入结果"""
+    """输出给 Claude，包含识模块的写入结果（旧版，保留兼容）"""
+    output_to_claude_with_recovery(compact_context, candidates, shi_result, {})
+
+
+def output_to_claude_with_recovery(
+    compact_context: str,
+    candidates: list[dict],
+    shi_result: dict,
+    recovery_result: dict
+):
+    """输出给 Claude，包含识模块写入结果和恢复提示"""
+    # 1. 恢复提示 (如果有)
+    recovery_prompt = recovery_result.get('prompt', '')
+    if recovery_prompt:
+        print(recovery_prompt)
+        print()
+
+    # 2. 上下文使用统计
+    usage = recovery_result.get('usage', {})
+    if usage:
+        ratio = usage.get('usage_ratio', 0)
+        stage = recovery_result.get('stage', 'normal')
+        stage_emoji = {'normal': '🟢', 'warning': '🟡', 'preemptive': '🟠', 'emergency': '🔴'}
+        print(f"**上下文使用率**: {stage_emoji.get(stage, '⚪')} {int(ratio * 100)}%")
+        print()
+
+    # 3. 标准输出
     print("## [慧] PreCompact 提取完成")
     print()
     print("已保存关键上下文到 `.wukong/context/current/compact.md`")
@@ -1361,7 +1403,7 @@ def output_to_claude_with_shi_result(
     if candidates:
         print(f"识别到 {len(candidates)} 个候选锚点。")
 
-    # 显示识模块写入结果
+    # 4. 显示识模块写入结果
     written = shi_result.get('anchors_written', [])
     skipped = shi_result.get('anchors_skipped', [])
     duplicated = shi_result.get('anchors_duplicated', [])
@@ -1383,8 +1425,845 @@ def output_to_claude_with_shi_result(
         for e in errors[:3]:
             print(f"  - {e.get('id')}: {e.get('error')}")
 
+    # 5. DCP 统计 (如果执行了)
+    dcp_stats = recovery_result.get('dcp_stats')
+    if dcp_stats:
+        removed = dcp_stats.get('removed_tools', [])
+        if removed:
+            print(f"\n### [DCP] 动态剪枝:")
+            print(f"  - 移除了 {len(removed)} 个冗余工具调用")
+            print(f"  - 消息数: {dcp_stats.get('original_count', 0)} → {dcp_stats.get('pruned_count', 0)}")
+
+    # 6. 会话错误 (如果有)
+    session_errors = recovery_result.get('session_errors', [])
+    if session_errors:
+        print(f"\n### [恢复] 检测到 {len(session_errors)} 个会话问题 (已处理)")
+
     print()
     print("如需恢复详细信息，读取 `.wukong/context/sessions/` 下对应文件。")
+
+
+# ============================================================
+# 任务续期机制 (Task Continuation)
+# 借鉴自 oh-my-opencode 的 Ralph Loop 和 Todo Continuation Enforcer
+# ============================================================
+
+# 任务续期配置
+CONTINUATION_CONFIG = {
+    'max_iterations': 100,          # 最大续期次数
+    'completion_markers': [         # 完成标记
+        '<promise>DONE</promise>',
+        '## 任务完成',
+        '## Task Complete',
+        '✅ 所有任务已完成',
+    ],
+    'incomplete_patterns': [        # 未完成标记
+        'in_progress',
+        '待完成',
+        'TODO:',
+        '继续',
+        '下一步',
+    ],
+}
+
+
+def detect_incomplete_tasks(messages: list[dict], cwd: str) -> dict:
+    """
+    检测未完成的任务。
+
+    检查策略：
+    1. 检查最后几条消息是否有完成标记
+    2. 检查是否有明确的未完成标记
+    3. 检查 .wukong/context/current/ 下是否有未完成任务记录
+
+    Args:
+        messages: 对话消息列表
+        cwd: 当前工作目录
+
+    Returns:
+        {
+            'has_incomplete': bool,
+            'incomplete_tasks': list[str],
+            'iteration': int,
+            'reason': str
+        }
+    """
+    result = {
+        'has_incomplete': False,
+        'incomplete_tasks': [],
+        'iteration': 0,
+        'reason': ''
+    }
+
+    # 1. 检查完成标记
+    recent_content = ''
+    for msg in messages[-5:]:
+        recent_content += get_message_content(msg) + '\n'
+
+    for marker in CONTINUATION_CONFIG['completion_markers']:
+        if marker in recent_content:
+            result['reason'] = f'Found completion marker: {marker}'
+            return result
+
+    # 2. 检查未完成标记
+    incomplete_found = []
+    for pattern in CONTINUATION_CONFIG['incomplete_patterns']:
+        if pattern.lower() in recent_content.lower():
+            incomplete_found.append(pattern)
+
+    if incomplete_found:
+        result['has_incomplete'] = True
+        result['incomplete_tasks'] = incomplete_found
+        result['reason'] = f'Found incomplete markers: {incomplete_found}'
+
+    # 3. 检查本地任务状态文件
+    state_file = Path(cwd) / '.wukong' / 'context' / 'current' / 'task-state.json'
+    if state_file.exists():
+        try:
+            with open(state_file, 'r', encoding='utf-8') as f:
+                state = json.load(f)
+                result['iteration'] = state.get('iteration', 0)
+                if state.get('incomplete_tasks'):
+                    result['has_incomplete'] = True
+                    result['incomplete_tasks'].extend(state['incomplete_tasks'])
+        except (json.JSONDecodeError, IOError):
+            pass
+
+    return result
+
+
+def generate_continuation_prompt(
+    task: str,
+    incomplete_tasks: list[str],
+    iteration: int,
+    max_iterations: int = 100
+) -> str:
+    """
+    生成任务续期提示。
+
+    借鉴 Ralph Loop 的格式，清晰告知：
+    - 当前迭代次数
+    - 原始任务
+    - 未完成项
+    - 继续指令
+
+    Args:
+        task: 原始任务描述
+        incomplete_tasks: 未完成任务列表
+        iteration: 当前迭代次数
+        max_iterations: 最大迭代次数
+
+    Returns:
+        续期提示字符串
+    """
+    prompt_lines = [
+        "## [WUKONG CONTINUATION]",
+        "",
+        f"**迭代**: [{iteration + 1}/{max_iterations}]",
+        "",
+        f"**原始任务**: {task[:200]}",
+        "",
+    ]
+
+    if incomplete_tasks:
+        prompt_lines.append("**未完成项**:")
+        for t in incomplete_tasks[:5]:
+            prompt_lines.append(f"- {t}")
+        prompt_lines.append("")
+
+    prompt_lines.extend([
+        "**指令**: 请检查当前进度，如任务未完成请继续执行。",
+        "",
+        "如果已完成所有任务，请输出 `## 任务完成` 标记。",
+    ])
+
+    return '\n'.join(prompt_lines)
+
+
+def save_task_state(cwd: str, state: dict):
+    """
+    保存任务状态到文件。
+
+    用于跨压缩周期追踪任务进度。
+
+    Args:
+        cwd: 当前工作目录
+        state: 任务状态字典
+    """
+    state_dir = Path(cwd) / '.wukong' / 'context' / 'current'
+    state_dir.mkdir(parents=True, exist_ok=True)
+
+    state_file = state_dir / 'task-state.json'
+    state['updated_at'] = datetime.now().isoformat()
+
+    with open(state_file, 'w', encoding='utf-8') as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+
+
+def clear_task_state(cwd: str):
+    """清除任务状态文件（任务完成时调用）"""
+    state_file = Path(cwd) / '.wukong' / 'context' / 'current' / 'task-state.json'
+    if state_file.exists():
+        state_file.unlink()
+
+
+# ============================================================
+# 错误分类与恢复 (Error Classification & Recovery)
+# 借鉴自 oh-my-opencode 的细粒度错误恢复机制
+# ============================================================
+
+# 错误分类体系
+ERROR_CATEGORIES = {
+    'edit_failure': {
+        'patterns': [
+            'oldString not found',
+            'oldString found multiple times',
+            'oldString and newString must be different',
+        ],
+        'severity': 'HIGH',
+        'recovery': 'read_and_retry',
+    },
+    'tool_result_missing': {
+        'patterns': [
+            'tool_use',
+            'tool_result',
+        ],
+        'severity': 'HIGH',
+        'recovery': 'inject_placeholder',
+    },
+    'context_exceeded': {
+        'patterns': [
+            'context_length_exceeded',
+            'prompt is too long',
+            'token limit',
+        ],
+        'severity': 'CRITICAL',
+        'recovery': 'compress_and_retry',
+    },
+    'permission_denied': {
+        'patterns': [
+            'Permission denied',
+            'EACCES',
+            'Operation not permitted',
+        ],
+        'severity': 'HIGH',
+        'recovery': 'user_confirm',
+    },
+    'file_not_found': {
+        'patterns': [
+            'No such file',
+            'ENOENT',
+            'FileNotFoundError',
+        ],
+        'severity': 'MEDIUM',
+        'recovery': 'search_and_retry',
+    },
+}
+
+
+def classify_error(error_message: str) -> dict | None:
+    """
+    对错误消息进行分类。
+
+    Args:
+        error_message: 错误消息字符串
+
+    Returns:
+        {
+            'category': str,
+            'severity': str,
+            'recovery': str,
+            'matched_pattern': str
+        } 或 None
+    """
+    if not error_message:
+        return None
+
+    error_lower = error_message.lower()
+
+    for category, config in ERROR_CATEGORIES.items():
+        for pattern in config['patterns']:
+            if pattern.lower() in error_lower:
+                return {
+                    'category': category,
+                    'severity': config['severity'],
+                    'recovery': config['recovery'],
+                    'matched_pattern': pattern,
+                }
+
+    return None
+
+
+def generate_recovery_prompt(error_info: dict) -> str:
+    """
+    根据错误分类生成恢复提示。
+
+    Args:
+        error_info: classify_error 返回的错误信息
+
+    Returns:
+        恢复指导字符串
+    """
+    category = error_info.get('category', '')
+    recovery = error_info.get('recovery', '')
+
+    prompts = {
+        'read_and_retry': """
+## [ERROR RECOVERY - Edit Failure]
+
+**STOP and do this NOW:**
+
+1. **READ** the target file to see its ACTUAL current state
+2. **VERIFY** what the content really looks like (your assumption was wrong)
+3. **ACKNOWLEDGE** the error - understand why oldString wasn't found
+4. **CORRECTED** action based on actual file state
+5. **DO NOT** retry the same edit without verification
+
+**Common causes:**
+- File was modified by another operation
+- Indentation/whitespace mismatch
+- String was already changed
+""",
+        'inject_placeholder': """
+## [ERROR RECOVERY - Tool Result Missing]
+
+A tool call is missing its result. This may be due to:
+- User interruption (ESC pressed)
+- Network timeout
+- Tool execution failure
+
+**Recovery:** The system will inject a placeholder result. Please review and retry the operation if needed.
+""",
+        'compress_and_retry': """
+## [ERROR RECOVERY - Context Exceeded]
+
+The conversation has exceeded the context window limit.
+
+**Automatic recovery in progress:**
+1. Extracting key anchors and decisions
+2. Compressing tool outputs
+3. Generating compact summary
+
+Please wait for compression to complete, then continue your task.
+""",
+        'user_confirm': """
+## [ERROR RECOVERY - Permission Denied]
+
+The operation requires elevated permissions.
+
+**Please confirm:**
+- Is the target path correct?
+- Do you have write access?
+- Is the file locked by another process?
+
+If you want to proceed, please grant the necessary permissions or modify the target path.
+""",
+        'search_and_retry': """
+## [ERROR RECOVERY - File Not Found]
+
+The specified file does not exist.
+
+**Recovery steps:**
+1. Use Glob/Grep to search for similar files
+2. Check if the file was moved or renamed
+3. Verify the path is correct
+
+**Do NOT** assume the path - verify it first.
+""",
+    }
+
+    return prompts.get(recovery, f"## [ERROR] Unknown error category: {category}")
+
+
+# ============================================================
+# 三阶段上下文恢复 (Three-Stage Context Recovery)
+# 借鉴自 oh-my-opencode 的 anthropic-context-window-limit-recovery
+# ============================================================
+
+# 上下文使用阈值
+CONTEXT_THRESHOLDS = {
+    'warning': 0.70,        # 70% - 发出警告
+    'preemptive': 0.85,     # 85% - 主动压缩
+    'emergency': 1.0,       # 100% - 紧急救援
+}
+
+
+def estimate_context_usage(messages: list[dict]) -> dict:
+    """
+    估算上下文使用率。
+
+    注意：这是一个估算，实际 token 数取决于具体的 tokenizer。
+    粗略估算：1 token ≈ 4 字符 (英文) 或 1.5 字符 (中文)
+
+    Args:
+        messages: 对话消息列表
+
+    Returns:
+        {
+            'total_chars': int,
+            'estimated_tokens': int,
+            'usage_ratio': float,  # 0.0 - 1.0
+            'stage': str  # 'normal', 'warning', 'preemptive', 'emergency'
+        }
+    """
+    # Claude 的上下文窗口大小 (200k tokens for Claude 3)
+    MAX_TOKENS = 200000
+
+    total_chars = 0
+    for msg in messages:
+        content = get_message_content(msg)
+        total_chars += len(content)
+
+        # 工具调用的输出通常很大
+        if 'toolUseResult' in msg:
+            result = msg.get('toolUseResult', '')
+            if isinstance(result, str):
+                total_chars += len(result)
+            elif isinstance(result, dict):
+                total_chars += len(json.dumps(result, ensure_ascii=False))
+
+    # 粗略估算 token 数 (混合语言，取平均)
+    estimated_tokens = total_chars // 3
+
+    usage_ratio = estimated_tokens / MAX_TOKENS
+
+    # 确定阶段
+    if usage_ratio >= CONTEXT_THRESHOLDS['emergency']:
+        stage = 'emergency'
+    elif usage_ratio >= CONTEXT_THRESHOLDS['preemptive']:
+        stage = 'preemptive'
+    elif usage_ratio >= CONTEXT_THRESHOLDS['warning']:
+        stage = 'warning'
+    else:
+        stage = 'normal'
+
+    return {
+        'total_chars': total_chars,
+        'estimated_tokens': estimated_tokens,
+        'usage_ratio': usage_ratio,
+        'stage': stage,
+    }
+
+
+def generate_stage_prompt(stage: str, usage_ratio: float) -> str:
+    """
+    根据上下文阶段生成提示。
+
+    Args:
+        stage: 阶段 ('normal', 'warning', 'preemptive', 'emergency')
+        usage_ratio: 使用率 (0.0 - 1.0)
+
+    Returns:
+        阶段提示字符串
+    """
+    percentage = int(usage_ratio * 100)
+
+    if stage == 'warning':
+        return f"""
+## [CONTEXT MONITOR] ⚠️ 70% 警告
+
+**当前使用率**: {percentage}%
+
+**提醒**: 上下文窗口已使用 {percentage}%，但仍有充足空间。
+- ✅ 不要因此仓促行动
+- ✅ 继续高质量完成当前任务
+- ⚠️ 考虑在合适时机执行 `/wukong 压缩`
+"""
+
+    elif stage == 'preemptive':
+        return f"""
+## [CONTEXT MONITOR] 🟠 85% 主动压缩
+
+**当前使用率**: {percentage}%
+
+**自动执行以下操作**:
+1. ✅ 启动 DCP (动态上下文剪枝)
+2. ✅ 压缩大型工具输出
+3. ✅ 保留关键锚点和决策
+
+**你应该**:
+- 完成当前正在进行的任务
+- 然后执行 `/wukong 压缩` 保存进度
+"""
+
+    elif stage == 'emergency':
+        return f"""
+## [CONTEXT MONITOR] 🔴 100% 紧急救援
+
+**当前使用率**: {percentage}%
+
+**紧急恢复模式已激活**:
+1. 🚨 执行完整上下文摘要
+2. 🚨 保留 AGENTS.md 和关键上下文
+3. 🚨 准备继续执行指令
+
+**自动保存的内容**:
+- 当前任务描述
+- 关键决策和约束
+- 未完成任务列表
+
+继续你的任务，系统会自动恢复上下文。
+"""
+
+    return ""
+
+
+# ============================================================
+# DCP - 动态上下文剪枝 (Dynamic Context Pruning)
+# ============================================================
+
+# 受保护的工具列表 (不会被剪枝)
+PROTECTED_TOOLS = {
+    'Task', 'TodoWrite', 'lsp_rename', 'Edit', 'Write',
+}
+
+# 可安全剪枝的工具模式
+PRUNABLE_PATTERNS = {
+    'Glob': {'keep_last': 3},       # 只保留最近 3 次
+    'Grep': {'keep_last': 3},
+    'Read': {'keep_last': 5},       # 读取操作保留更多
+    'Bash': {'keep_last': 3},
+    'WebSearch': {'keep_last': 2},
+    'WebFetch': {'keep_last': 2},
+}
+
+
+def apply_dcp(messages: list[dict]) -> tuple[list[dict], dict]:
+    """
+    应用动态上下文剪枝 (DCP)。
+
+    策略:
+    1. 识别重复的工具调用 (相同签名)
+    2. 保护关键工具的输出
+    3. 移除冗余，只保留最新
+
+    Args:
+        messages: 原始消息列表
+
+    Returns:
+        (pruned_messages, stats): 剪枝后的消息列表和统计信息
+    """
+    stats = {
+        'original_count': len(messages),
+        'pruned_count': 0,
+        'removed_tools': [],
+    }
+
+    # 按工具类型分组
+    tool_calls = {}  # tool_name -> list of (index, message)
+
+    for i, msg in enumerate(messages):
+        # 检测工具调用
+        if msg.get('type') == 'assistant':
+            content = msg.get('message', {}).get('content', [])
+            if isinstance(content, list):
+                for item in content:
+                    if isinstance(item, dict) and item.get('type') == 'tool_use':
+                        tool_name = item.get('name', '')
+                        if tool_name and tool_name not in PROTECTED_TOOLS:
+                            if tool_name not in tool_calls:
+                                tool_calls[tool_name] = []
+                            tool_calls[tool_name].append((i, msg))
+
+    # 确定要移除的消息索引
+    indices_to_remove = set()
+
+    for tool_name, calls in tool_calls.items():
+        config = PRUNABLE_PATTERNS.get(tool_name, {'keep_last': 3})
+        keep_last = config.get('keep_last', 3)
+
+        if len(calls) > keep_last:
+            # 移除旧的调用
+            for idx, _ in calls[:-keep_last]:
+                indices_to_remove.add(idx)
+                stats['removed_tools'].append(tool_name)
+
+    # 构建剪枝后的消息列表
+    pruned_messages = [
+        msg for i, msg in enumerate(messages)
+        if i not in indices_to_remove
+    ]
+
+    stats['pruned_count'] = len(pruned_messages)
+
+    return pruned_messages, stats
+
+
+def truncate_large_outputs(messages: list[dict], target_reduction: float = 0.5) -> list[dict]:
+    """
+    截断大型工具输出。
+
+    策略:
+    - 按大小排序工具输出
+    - 截断最大的输出 (目标削减 50%)
+    - 保留元数据 (工具名、状态)
+
+    Args:
+        messages: 消息列表
+        target_reduction: 目标削减比例
+
+    Returns:
+        处理后的消息列表
+    """
+    MAX_TOOL_OUTPUT = 2000  # 单个工具输出的最大字符数
+
+    processed = []
+    for msg in messages:
+        if 'toolUseResult' in msg:
+            result = msg.get('toolUseResult', '')
+            if isinstance(result, str) and len(result) > MAX_TOOL_OUTPUT:
+                # 截断并添加标记
+                msg = msg.copy()
+                msg['toolUseResult'] = result[:MAX_TOOL_OUTPUT] + '\n... [OUTPUT TRUNCATED]'
+            elif isinstance(result, dict):
+                result_str = json.dumps(result, ensure_ascii=False)
+                if len(result_str) > MAX_TOOL_OUTPUT:
+                    msg = msg.copy()
+                    # 保留关键字段
+                    truncated = {
+                        '_truncated': True,
+                        '_original_size': len(result_str),
+                    }
+                    for key in ['status', 'error', 'summary', 'count']:
+                        if key in result:
+                            truncated[key] = result[key]
+                    msg['toolUseResult'] = truncated
+
+        processed.append(msg)
+
+    return processed
+
+
+# ============================================================
+# 会话级错误恢复 (Session-Level Error Recovery)
+# ============================================================
+
+def detect_session_errors(messages: list[dict]) -> list[dict]:
+    """
+    检测会话级错误。
+
+    检测类型:
+    1. 缺失工具结果 (tool_use 无对应 tool_result)
+    2. 空消息
+    3. 思考块问题
+
+    Args:
+        messages: 消息列表
+
+    Returns:
+        错误列表 [{'type': str, 'index': int, 'details': str}]
+    """
+    errors = []
+
+    pending_tool_uses = {}  # tool_use_id -> index
+
+    for i, msg in enumerate(messages):
+        # 检测空消息
+        content = get_message_content(msg)
+        if msg.get('type') == 'assistant' and not content.strip():
+            errors.append({
+                'type': 'empty_message',
+                'index': i,
+                'details': 'Assistant message has no content'
+            })
+
+        # 跟踪工具调用
+        if msg.get('type') == 'assistant':
+            msg_content = msg.get('message', {}).get('content', [])
+            if isinstance(msg_content, list):
+                for item in msg_content:
+                    if isinstance(item, dict) and item.get('type') == 'tool_use':
+                        tool_id = item.get('id', '')
+                        if tool_id:
+                            pending_tool_uses[tool_id] = i
+
+        # 检测工具结果
+        if msg.get('type') == 'user':
+            msg_content = msg.get('message', {}).get('content', [])
+            if isinstance(msg_content, list):
+                for item in msg_content:
+                    if isinstance(item, dict) and item.get('type') == 'tool_result':
+                        tool_id = item.get('tool_use_id', '')
+                        if tool_id in pending_tool_uses:
+                            del pending_tool_uses[tool_id]
+
+    # 未配对的工具调用
+    for tool_id, index in pending_tool_uses.items():
+        errors.append({
+            'type': 'tool_result_missing',
+            'index': index,
+            'details': f'Tool use {tool_id} has no corresponding result'
+        })
+
+    return errors
+
+
+def generate_recovery_for_session_errors(errors: list[dict]) -> str:
+    """
+    为会话错误生成恢复提示。
+
+    Args:
+        errors: 错误列表
+
+    Returns:
+        恢复提示字符串
+    """
+    if not errors:
+        return ""
+
+    lines = [
+        "## [SESSION RECOVERY] 检测到会话错误",
+        "",
+    ]
+
+    error_types = {}
+    for e in errors:
+        et = e['type']
+        if et not in error_types:
+            error_types[et] = []
+        error_types[et].append(e)
+
+    if 'tool_result_missing' in error_types:
+        count = len(error_types['tool_result_missing'])
+        lines.append(f"- **缺失工具结果**: {count} 个")
+        lines.append("  → 系统已注入占位符，请检查相关操作是否需要重试")
+
+    if 'empty_message' in error_types:
+        count = len(error_types['empty_message'])
+        lines.append(f"- **空消息**: {count} 个")
+        lines.append("  → 已自动清理")
+
+    lines.extend([
+        "",
+        "**建议**: 检查最近的操作是否成功完成，如有需要请重试。",
+    ])
+
+    return '\n'.join(lines)
+
+
+# ============================================================
+# 主恢复流程 (Main Recovery Flow)
+# ============================================================
+
+def run_recovery_pipeline(
+    messages: list[dict],
+    cwd: str
+) -> dict:
+    """
+    执行完整的恢复流水线。
+
+    流程:
+    1. 估算上下文使用率
+    2. 检测会话错误
+    3. 根据阶段执行对应恢复策略
+    4. 生成恢复提示
+
+    Args:
+        messages: 对话消息列表
+        cwd: 当前工作目录
+
+    Returns:
+        {
+            'stage': str,
+            'usage': dict,
+            'session_errors': list,
+            'dcp_stats': dict | None,
+            'prompt': str,
+            'messages': list  # 处理后的消息
+        }
+    """
+    result = {
+        'stage': 'normal',
+        'usage': {},
+        'session_errors': [],
+        'dcp_stats': None,
+        'prompt': '',
+        'messages': messages,
+    }
+
+    # 1. 估算使用率
+    usage = estimate_context_usage(messages)
+    result['usage'] = usage
+    result['stage'] = usage['stage']
+
+    # 2. 检测会话错误
+    session_errors = detect_session_errors(messages)
+    result['session_errors'] = session_errors
+
+    prompts = []
+
+    # 3. 处理会话错误
+    if session_errors:
+        error_prompt = generate_recovery_for_session_errors(session_errors)
+        if error_prompt:
+            prompts.append(error_prompt)
+
+    # 4. 根据阶段执行恢复
+    stage = usage['stage']
+
+    if stage == 'warning':
+        # 只发出警告
+        stage_prompt = generate_stage_prompt(stage, usage['usage_ratio'])
+        prompts.append(stage_prompt)
+
+    elif stage == 'preemptive':
+        # 85% - 执行 DCP + 截断
+        pruned, dcp_stats = apply_dcp(messages)
+        result['dcp_stats'] = dcp_stats
+        result['messages'] = truncate_large_outputs(pruned)
+
+        stage_prompt = generate_stage_prompt(stage, usage['usage_ratio'])
+        prompts.append(stage_prompt)
+
+        # 添加 DCP 统计
+        if dcp_stats['removed_tools']:
+            prompts.append(f"\n**DCP 结果**: 移除了 {len(dcp_stats['removed_tools'])} 个冗余工具调用")
+
+    elif stage == 'emergency':
+        # 100% - 紧急救援
+        # 执行更激进的剪枝
+        pruned, dcp_stats = apply_dcp(messages)
+        result['dcp_stats'] = dcp_stats
+        result['messages'] = truncate_large_outputs(pruned, target_reduction=0.7)
+
+        stage_prompt = generate_stage_prompt(stage, usage['usage_ratio'])
+        prompts.append(stage_prompt)
+
+    # 合并提示
+    result['prompt'] = '\n\n'.join(prompts)
+
+    # 保存恢复状态
+    save_recovery_state(cwd, result)
+
+    return result
+
+
+def save_recovery_state(cwd: str, recovery_result: dict):
+    """
+    保存恢复状态到文件。
+
+    用于调试和跨压缩周期追踪。
+
+    Args:
+        cwd: 当前工作目录
+        recovery_result: 恢复结果字典
+    """
+    state_dir = Path(cwd) / '.wukong' / 'context' / 'current'
+    state_dir.mkdir(parents=True, exist_ok=True)
+
+    state_file = state_dir / 'recovery-state.json'
+
+    # 只保存关键信息（不保存完整消息）
+    state = {
+        'timestamp': datetime.now().isoformat(),
+        'stage': recovery_result['stage'],
+        'usage': recovery_result['usage'],
+        'session_errors_count': len(recovery_result['session_errors']),
+        'dcp_stats': recovery_result.get('dcp_stats'),
+    }
+
+    with open(state_file, 'w', encoding='utf-8') as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
 
 
 if __name__ == '__main__':

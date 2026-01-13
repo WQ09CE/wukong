@@ -155,8 +155,24 @@ The installer will:
 
 ## Project Structure
 
+**Repository source (for development):**
 ```
-project/
+wukong/
+├── wukong-dist/            # Distribution source (non-hidden)
+│   ├── rules/              # Core rules
+│   ├── skills/             # Agent skill definitions
+│   ├── commands/           # Command handlers
+│   ├── hooks/              # PreCompact hooks
+│   ├── context/templates/  # Context templates
+│   └── templates/          # Other templates
+│
+├── install.sh              # Installer script
+└── README.md
+```
+
+**After installation (target project):**
+```
+your-project/
 ├── .claude/
 │   ├── rules/              # Auto-loaded rules
 │   ├── skills/             # Agent skill definitions
@@ -168,6 +184,9 @@ project/
     │   ├── index.json      # Session index
     │   └── sessions/       # Session archives
     └── plans/              # Design documents
+
+~/.wukong/
+└── hooks/                  # Global hooks
 ```
 
 ## Key Constraints
@@ -186,9 +205,9 @@ project/
 
 ## Documentation
 
-- [System Overview](.wukong/plans/wukong-system-overview.md)
-- [Core Rules](.claude/rules/00-wukong-core.md)
-- [Agent Skills](.claude/skills/)
+- [System Overview](wukong-dist/plans/wukong-system-overview.md)
+- [Core Rules](wukong-dist/rules/00-wukong-core.md)
+- [Agent Skills](wukong-dist/skills/)
 - [Mythology Version](README-mythology.md) - With Eastern philosophy terminology
 
 ## References

@@ -18,7 +18,11 @@ SOURCE_DIR=""
 # ============================================================
 # 1. 确定源目录
 # ============================================================
-if [ -d "$PROJECT_ROOT/.wukong" ]; then
+if [ -d "$PROJECT_ROOT/wukong-dist" ]; then
+    # 新版：非隐藏目录
+    SOURCE_DIR="$PROJECT_ROOT/wukong-dist"
+elif [ -d "$PROJECT_ROOT/.wukong" ]; then
+    # 旧版兼容：隐藏目录
     SOURCE_DIR="$PROJECT_ROOT/.wukong"
 else
     TEMP_DIR=$(mktemp -d)
@@ -26,7 +30,13 @@ else
 
     echo "Fetching Wukong from GitHub..."
     curl -fsSL "https://github.com/anthropics/wukong/archive/refs/heads/main.tar.gz" | tar -xz -C "$TEMP_DIR"
-    SOURCE_DIR="$TEMP_DIR/wukong-main/.wukong"
+
+    # 尝试新版目录结构，回退到旧版
+    if [ -d "$TEMP_DIR/wukong-main/wukong-dist" ]; then
+        SOURCE_DIR="$TEMP_DIR/wukong-main/wukong-dist"
+    else
+        SOURCE_DIR="$TEMP_DIR/wukong-main/.wukong"
+    fi
 
     if [ ! -d "$SOURCE_DIR" ]; then
         echo -e "${RED}Error: Failed to fetch Wukong from GitHub.${NC}"

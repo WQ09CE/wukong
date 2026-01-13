@@ -561,3 +561,83 @@ async def health_check(engine: EngineDep) -> dict[str, str]:
 - 保持代码可编译
 - 遵循现有代码风格
 - 为下一个战士（维护者）着想
+
+---
+
+## Edit Error Recovery (编辑错误恢复)
+
+> 借鉴自 oh-my-opencode 的细粒度错误恢复机制
+
+当 Edit 工具失败时，**不要盲目重试**，必须先验证再操作。
+
+### 常见 Edit 错误
+
+| 错误 | 原因 | 恢复策略 |
+|------|------|----------|
+| `oldString not found` | 文件内容与预期不符 | READ 验证后重试 |
+| `oldString found multiple times` | 匹配不唯一 | 增加上下文使匹配唯一 |
+| `oldString and newString must be different` | 无效修改 | 检查逻辑，确认是否需要修改 |
+
+### 恢复流程
+
+```
+Edit 失败
+    ↓
+[1] STOP - 立即停止，不要重试
+    ↓
+[2] READ - 读取文件查看实际内容
+    ↓
+[3] VERIFY - 对比预期 vs 实际
+    ↓
+[4] DIAGNOSE - 分析失败原因
+    │
+    ├── 内容已变更 → 基于新内容重新构造 oldString
+    ├── 缩进不匹配 → 检查 tab/space，保持一致
+    ├── 多处匹配 → 增加上下文行数
+    └── 文件不存在 → 用 Glob 搜索正确路径
+    ↓
+[5] RETRY - 基于实际情况修正后重试
+```
+
+### 恢复示例
+
+**错误**: `oldString not found in file`
+
+```markdown
+## 错误分析
+
+**预期 oldString**:
+```python
+def hello():
+    return "hello"
+```
+
+**实际文件内容** (通过 READ 验证):
+```python
+def hello():
+    return "Hello, World!"  # 已被修改
+```
+
+**诊断**: 函数已被其他操作修改，返回值不同
+
+**修正后的 Edit**:
+- oldString: `return "Hello, World!"`
+- newString: `return "hello"`
+```
+
+### 关键原则
+
+1. **不信任假设** - 你对文件内容的假设可能是错的
+2. **先读后改** - Edit 前必须 READ 确认
+3. **诊断原因** - 理解为什么失败，而不是盲目重试
+4. **增量验证** - 每次 Edit 后验证是否成功
+
+### 防御性编码
+
+```python
+# 推荐模式: READ → Edit → READ 验证
+1. content = Read(file_path)
+2. 确认 oldString 在 content 中存在且唯一
+3. Edit(file_path, oldString, newString)
+4. new_content = Read(file_path)  # 验证修改成功
+```
