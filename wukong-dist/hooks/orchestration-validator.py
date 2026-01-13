@@ -104,6 +104,16 @@ class OrchestrationDecision:
 # ============================================================
 # 编排规则定义
 # ============================================================
+#
+# IMPORTANT: Single Source of Truth 在 .wukong/canonical/
+# - track-dags.json: 轨道 DAG 定义
+# - research-keywords.json: 研究类任务关键词
+# - explicit-avatars.json: 显式分身指定标记
+#
+# 此处配置需与 canonical/ 目录下的 JSON 文件保持同步
+#
+# TODO: 未来可实现从 JSON 动态加载配置
+# ============================================================
 
 # ============================================================
 # 分身配置表 (Avatar Configurations)
