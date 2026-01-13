@@ -1,1 +1,23 @@
+# macOS
 .DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Wukong runtime data (用户特定，不应提交)
+.wukong/context/current/
+.wukong/context/sessions/
+.wukong/context/index.json
+.wukong/notepads/
+
+# Keep templates
+!.wukong/context/templates/
+
+# IDE
+.idea/
+.vscode/
+*.swp
