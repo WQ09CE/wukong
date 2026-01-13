@@ -33,6 +33,61 @@ from typing import Any
 # 分身输出压缩 (Avatar Output Compression)
 # ============================================================
 
+# ============================================================
+# 用户级别上下文路径 (User-Level Context Paths)
+# ============================================================
+# 所有上下文存储在用户目录，避免项目级冲突，支持跨项目沉淀
+
+def get_user_context_dir() -> Path:
+    """获取用户级别的上下文根目录"""
+    return Path.home() / '.wukong' / 'context'
+
+
+def get_project_name(cwd: str) -> str:
+    """从工作目录提取项目名（最后一级目录名）"""
+    return Path(cwd).name or 'unknown'
+
+
+def get_active_session_dir(session_id: str) -> Path:
+    """获取活跃会话目录（按 session_id 隔离，避免多会话冲突）"""
+    active_dir = get_user_context_dir() / 'active' / session_id
+    active_dir.mkdir(parents=True, exist_ok=True)
+    return active_dir
+
+
+def get_sessions_archive_dir() -> Path:
+    """获取历史会话存档目录"""
+    sessions_dir = get_user_context_dir() / 'sessions'
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+    return sessions_dir
+
+
+def get_project_anchors_path(cwd: str) -> Path:
+    """获取项目级锚点文件路径"""
+    project_name = get_project_name(cwd)
+    anchors_dir = get_user_context_dir() / 'anchors' / 'projects'
+    anchors_dir.mkdir(parents=True, exist_ok=True)
+    return anchors_dir / f'{project_name}.md'
+
+
+def get_global_anchors_path() -> Path:
+    """获取全局锚点文件路径"""
+    anchors_dir = get_user_context_dir() / 'anchors'
+    anchors_dir.mkdir(parents=True, exist_ok=True)
+    return anchors_dir / 'global.md'
+
+
+def get_session_index_path() -> Path:
+    """获取会话索引文件路径"""
+    context_dir = get_user_context_dir()
+    context_dir.mkdir(parents=True, exist_ok=True)
+    return context_dir / 'index.json'
+
+
+# ============================================================
+# 分身输出压缩配置 (Avatar Output Compression Config)
+# ============================================================
+
 # 分身类型对应的压缩配置
 AVATAR_COMPRESS_CONFIG = {
     '眼': {'max_files': 20, 'max_summary': 500},
@@ -1079,7 +1134,7 @@ def shi_write(hui_output: dict, cwd: str) -> dict:
     接收慧模块的 JSON 输出，执行:
     1. 门槛检查
     2. 去重检查
-    3. 写入通过的锚点
+    3. 写入通过的锚点（到用户级别项目锚点文件）
     4. 更新索引
 
     Args:
@@ -1096,10 +1151,9 @@ def shi_write(hui_output: dict, cwd: str) -> dict:
         "errors": []
     }
 
-    # 准备路径
-    wukong_dir = Path(cwd) / '.wukong'
-    anchors_path = wukong_dir / 'context' / 'anchors.md'
-    index_path = wukong_dir / 'context' / 'index.json'
+    # 准备路径（用户级别）
+    anchors_path = get_project_anchors_path(cwd)
+    index_path = get_session_index_path()
 
     # 加载现有锚点
     existing_anchors = _load_existing_anchors(anchors_path)
@@ -1169,20 +1223,37 @@ def shi_write(hui_output: dict, cwd: str) -> dict:
 
 
 def save_context(cwd: str, compact_context: str, session_id: str):
-    """保存上下文到文件"""
-    context_dir = Path(cwd) / '.wukong' / 'context' / 'current'
-    context_dir.mkdir(parents=True, exist_ok=True)
+    """
+    保存上下文到用户级别目录。
 
-    compact_path = context_dir / 'compact.md'
+    目录结构:
+    ~/.wukong/context/
+    ├── active/{session_id}/compact.md      # 活跃会话（按 session 隔离）
+    └── sessions/{project}-{timestamp}-{session[:8]}/  # 历史存档
+    """
+    project_name = get_project_name(cwd)
+
+    # 1. 保存到活跃会话目录（按 session_id 隔离，避免多会话冲突）
+    active_dir = get_active_session_dir(session_id)
+    compact_path = active_dir / 'compact.md'
     with open(compact_path, 'w', encoding='utf-8') as f:
         f.write(compact_context)
 
-    # 同时保存一个带时间戳的备份
-    sessions_dir = Path(cwd) / '.wukong' / 'context' / 'sessions'
-    sessions_dir.mkdir(parents=True, exist_ok=True)
+    # 保存元数据（用于后续恢复时识别项目）
+    metadata_path = active_dir / 'metadata.json'
+    metadata = {
+        'session_id': session_id,
+        'project': project_name,
+        'cwd': cwd,
+        'timestamp': datetime.now().isoformat(),
+    }
+    with open(metadata_path, 'w', encoding='utf-8') as f:
+        json.dump(metadata, f, ensure_ascii=False, indent=2)
 
+    # 2. 同时保存到历史存档（带项目名和时间戳）
+    sessions_dir = get_sessions_archive_dir()
     timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
-    session_dir = sessions_dir / f'{timestamp}-{session_id[:8]}'
+    session_dir = sessions_dir / f'{project_name}-{timestamp}-{session_id[:8]}'
     session_dir.mkdir(parents=True, exist_ok=True)
 
     backup_path = session_dir / 'compact.md'
@@ -1194,12 +1265,12 @@ def output_to_claude(compact_context: str, candidates: list[dict]):
     """输出给 Claude (会被注入到压缩后的上下文)"""
     print("## [慧] PreCompact 提取完成")
     print()
-    print("已保存关键上下文到 `.wukong/context/current/compact.md`")
+    print("已保存关键上下文到 `~/.wukong/context/active/{session}/compact.md`")
     print()
     if candidates:
         print(f"识别到 {len(candidates)} 个候选锚点，待后续门槛检查。")
     print()
-    print("如需恢复详细信息，读取 `.wukong/context/sessions/` 下对应文件。")
+    print("如需恢复详细信息，读取 `~/.wukong/context/sessions/` 下对应文件。")
 
 
 def main():
@@ -1333,10 +1404,11 @@ def _run_precompact_mode():
         candidates=candidates
     )
 
-    # 8. 保存慧输出 JSON (供调试和识模块使用)
-    sessions_dir = Path(cwd) / '.wukong' / 'context' / 'sessions'
+    # 8. 保存慧输出 JSON (供调试和识模块使用，用户级别)
+    project_name = get_project_name(cwd)
+    sessions_dir = get_sessions_archive_dir()
     timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
-    session_dir = sessions_dir / f'{timestamp}-{session_id[:8]}'
+    session_dir = sessions_dir / f'{project_name}-{timestamp}-{session_id[:8]}'
     session_dir.mkdir(parents=True, exist_ok=True)
 
     hui_output_path = session_dir / 'hui-output.json'
@@ -1397,7 +1469,7 @@ def output_to_claude_with_recovery(
     # 3. 标准输出
     print("## [慧] PreCompact 提取完成")
     print()
-    print("已保存关键上下文到 `.wukong/context/current/compact.md`")
+    print("已保存关键上下文到 `~/.wukong/context/active/{session}/compact.md`")
     print()
 
     if candidates:
@@ -1440,7 +1512,7 @@ def output_to_claude_with_recovery(
         print(f"\n### [恢复] 检测到 {len(session_errors)} 个会话问题 (已处理)")
 
     print()
-    print("如需恢复详细信息，读取 `.wukong/context/sessions/` 下对应文件。")
+    print("如需恢复详细信息，读取 `~/.wukong/context/sessions/` 下对应文件。")
 
 
 # ============================================================

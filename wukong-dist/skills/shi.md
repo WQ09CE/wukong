@@ -16,18 +16,24 @@
 
 ## 存储结构
 
+> **用户级别存储** - 所有上下文存储在 `~/.wukong/context/`，支持跨项目沉淀
+
 ```
-.wukong/context/
-├── anchors.md              # 永久锚点索引
-├── current/                # 当前会话
-│   ├── compact.md          # 🔸 缩形态 (<500字)
-│   ├── normal.md           # 🔹 常形态 (500-2000字)
-│   └── expanded.md         # 🔶 巨形态 (完整)
-└── sessions/               # 历史存档
-    └── {date}-{name}/
-        ├── compact.md
-        ├── normal.md
-        └── expanded.md
+~/.wukong/context/
+├── active/                         # 活跃会话 (按 session_id 隔离，避免多会话冲突)
+│   └── {session_id}/
+│       ├── compact.md              # 🔸 缩形态 (<500字)
+│       └── metadata.json           # 元数据 (project, cwd, timestamp)
+├── sessions/                       # 历史存档 (带项目名和时间戳)
+│   └── {project}-{timestamp}-{session[:8]}/
+│       ├── compact.md
+│       ├── hui-output.json         # 慧模块完整输出
+│       └── shi-result.json         # 识模块写入结果
+├── anchors/                        # 锚点存储
+│   ├── projects/                   # 按项目分文件
+│   │   └── {project}.md            # 项目级锚点
+│   └── global.md                   # 全局锚点 (跨项目)
+└── index.json                      # 会话索引
 ```
 
 ## 三态上下文
@@ -235,9 +241,10 @@
 
 ### 保存内容
 
-1. **会话上下文** → `current/compact.md`
-2. **新锚点** → `anchors.md` (追加)
-3. **完整存档** → `sessions/{date}-{name}/`
+1. **会话上下文** → `~/.wukong/context/active/{session_id}/compact.md`
+2. **新锚点** → `~/.wukong/context/anchors/projects/{project}.md` (追加)
+3. **完整存档** → `~/.wukong/context/sessions/{project}-{timestamp}-{session[:8]}/`
+4. **会话索引** → `~/.wukong/context/index.json` (更新)
 
 ## 惯性提示 (读取)
 
@@ -327,20 +334,23 @@ prompt = get_shi_prompt_for_avatar(cwd, '斗战胜佛', task_desc)
 ## 召唤分身时的上下文传递
 
 ```python
+# 获取惯性提示 (根据分身类型自动选择 T1/T2)
+shi_prompt = get_shi_prompt_for_avatar(cwd, '斗战胜佛', task_description)
+
 Task(
     subagent_type="general-purpose",
     prompt=f"""
 ## 🔸 缩形态上下文
-{read_compact_context()}
+{read_compact_context(session_id)}
 
-## 相关锚点
-{get_relevant_anchors(task_type)}
+## 惯性提示
+{shi_prompt}
 
 ## 你的任务
 {task_description}
 
 ## 注意
-如需更多上下文，可 Read(".wukong/context/current/normal.md")
+如需更多上下文，可 Read("~/.wukong/context/active/{session_id}/compact.md")
 """
 )
 ```

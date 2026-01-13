@@ -29,3 +29,7 @@ wukong-dist/context/test-results/
 .idea/
 .vscode/
 *.swp
+
+# Project-level Claude Code config (用户应使用 ~/.wukong/)
+# wukong 系统设计为用户级别配置，不需要项目级别跟踪
+.claude/
