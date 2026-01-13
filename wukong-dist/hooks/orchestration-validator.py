@@ -8,6 +8,11 @@ Dry-Run 模式验证编排决策的正确性：
 - 角色边界：分身不越权 (Do/Don't)
 - DAG 完整性：轨道节点无遗漏
 
+IMPORTANT - 数据同步说明:
+本文件中的分身配置 (AVATAR_CONFIGS) 是 .wukong/skills/jie.md 中
+"分身边界定义"章节的代码镜像。修改分身配置时，需同步更新两处。
+Single Source of Truth: .wukong/skills/jie.md
+
 Usage:
     python3 orchestration-validator.py [--verbose] [--json]
     python3 orchestration-validator.py --task "添加登录功能"
@@ -100,7 +105,25 @@ class OrchestrationDecision:
 # 编排规则定义
 # ============================================================
 
-# 分身配置表
+# ============================================================
+# 分身配置表 (Avatar Configurations)
+# ============================================================
+#
+# IMPORTANT: Single Source of Truth 在 .wukong/skills/jie.md
+# 此处配置需与 jie.md 中的"分身边界定义"章节保持同步
+#
+# TODO: 未来可实现从 jie.md 动态解析配置，避免重复定义
+# 参考: parse_jie_boundaries() 函数（待实现）
+#
+# 同步检查清单:
+# - [ ] Do 列表与 jie.md 一致
+# - [ ] Don't 列表与 jie.md 一致
+# - [ ] Tools 列表与 jie.md 一致
+# - [ ] Cost/MaxConcurrent/Background 与 jie.md 一致
+#
+# ============================================================
+
+# 分身配置表 - 镜像自 jie.md (Single Source of Truth)
 AVATAR_CONFIGS: dict[Avatar, AvatarConfig] = {
     Avatar.EYE: AvatarConfig(
         name="眼分身",
