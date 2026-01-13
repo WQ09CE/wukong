@@ -117,6 +117,23 @@
 
 ---
 
+### [P002] 运行时数据误提交到仓库
+**时间**: 2025-01-12
+**状态**: Resolved (已加入 .gitignore)
+**症状**: `.wukong/context/` 下的会话数据被 `git add -A` 提交到仓库
+**根因**:
+- .gitignore 未覆盖运行时数据目录
+- 使用 `git add -A` 未检查暂存内容
+**解决**:
+- 更新 .gitignore 排除 context/current/, context/sessions/, index.json
+- 使用 `git rm --cached` 从跟踪中移除
+**预防**:
+- 提交前检查 `git status` 是否包含运行时数据
+- 新建目录时同步更新 .gitignore
+**Tags**: #security #git #antipattern
+
+---
+
 ## 用户偏好锚点 [U]
 
 <!--
@@ -137,7 +154,7 @@
 | 决策 [D] | 4 | D004 |
 | 约束 [C] | 0 | - |
 | 接口 [I] | 0 | - |
-| 问题 [P] | 1 | P001 |
+| 问题 [P] | 2 | P002 |
 | 偏好 [U] | 0 | - |
 
 *最后更新: 2025-01-12*
