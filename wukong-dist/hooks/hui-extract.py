@@ -24,7 +24,7 @@ import os
 import sys
 import re
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -1220,6 +1220,609 @@ def shi_write(hui_output: dict, cwd: str) -> dict:
         })
 
     return result
+
+
+# ============================================================
+# 识模块 - 惯性提示 API (Shi Module - Inertia Prompt API)
+# ============================================================
+
+# 分身类型映射 (用于规范化分身名称)
+AVATAR_TYPE_MAP = {
+    # 眼分身
+    '眼': 'eye', 'explorer': 'eye', 'eye': 'eye',
+    # 耳分身
+    '耳': 'ear', 'analyst': 'ear', 'ear': 'ear',
+    # 鼻分身
+    '鼻': 'nose', 'reviewer': 'nose', 'nose': 'nose',
+    # 舌分身
+    '舌': 'tongue', 'tester': 'tongue', 'tongue': 'tongue',
+    # 身分身 (斗战胜佛)
+    '身': 'body', '斗战胜佛': 'body', 'impl': 'body', 'implementer': 'body', 'body': 'body',
+    # 意分身
+    '意': 'mind', 'architect': 'mind', 'mind': 'mind',
+}
+
+# 分身惯性提示配置
+# T1: 任务启动前 (P+C+M)
+# T2: 方案冻结后 (D+I)
+AVATAR_INERTIA_CONFIG = {
+    'eye': {'t1': True, 't2': False},      # 眼: 探索前提示已知问题
+    'ear': {'t1': False, 't2': False},     # 耳: 需求分析无需历史包袱
+    'nose': {'t1': True, 't2': True},      # 鼻: 审查时参考约束和决策
+    'tongue': {'t1': True, 't2': False},   # 舌: 测试时提示已知陷阱
+    'body': {'t1': True, 't2': True},      # 身: 实现前获取完整上下文
+    'mind': {'t1': False, 't2': True},     # 意: 设计时参考历史决策
+}
+
+
+def _normalize_avatar_type(avatar_type: str) -> str:
+    """规范化分身类型名称"""
+    return AVATAR_TYPE_MAP.get(avatar_type.lower(), 'unknown')
+
+
+def _filter_anchors_by_keywords(
+    anchors: list[dict],
+    keywords: list[str] | None = None
+) -> list[dict]:
+    """
+    根据关键词过滤锚点。
+
+    如果 keywords 为空，返回所有锚点（最多 5 个）。
+    否则返回标题或内容包含关键词的锚点。
+
+    Args:
+        anchors: 锚点列表
+        keywords: 过滤关键词
+
+    Returns:
+        过滤后的锚点列表
+    """
+    if not anchors:
+        return []
+
+    if not keywords:
+        # 无关键词，返回最近的锚点（最多 5 个）
+        return anchors[-5:] if len(anchors) > 5 else anchors
+
+    # 按关键词过滤
+    matched = []
+    keywords_lower = [k.lower() for k in keywords]
+
+    for anchor in anchors:
+        title = anchor.get('title', '').lower()
+        content = anchor.get('content', '').lower()
+
+        for kw in keywords_lower:
+            if kw in title or kw in content:
+                matched.append(anchor)
+                break
+
+    return matched[-5:] if len(matched) > 5 else matched
+
+
+def _format_anchor_for_prompt(anchor: dict) -> str:
+    """格式化单个锚点用于提示"""
+    anchor_id = anchor.get('id', 'A000')
+    title = anchor.get('title', '')[:50]
+    content = anchor.get('content', '').strip()
+
+    # 如果内容为空，只显示标题
+    if not content:
+        return f"[{anchor_id}] {title}"
+
+    # 提取内容的第一行有意义的文字
+    content_preview = ''
+    for line in content.split('\n'):
+        line = line.strip()
+        # 跳过元数据行和分隔符
+        if not line or line.startswith('**') or line.startswith('---') or line.startswith('#'):
+            continue
+        content_preview = line[:80]
+        break
+
+    if content_preview:
+        return f"[{anchor_id}] {title}: {content_preview}"
+    return f"[{anchor_id}] {title}"
+
+
+def get_shi_t1_prompt(cwd: str, keywords: list[str] = None) -> str:
+    """
+    T1 惯性提示 (任务启动前)。
+
+    查询类型: P(问题) + C(约束) + M(模式)
+    适用分身: 眼、身、舌、鼻
+
+    Args:
+        cwd: 当前工作目录
+        keywords: 可选的关键词过滤
+
+    Returns:
+        格式化的 T1 惯性提示
+    """
+    anchors_path = get_project_anchors_path(cwd)
+    all_anchors = _load_existing_anchors(anchors_path)
+
+    if not all_anchors:
+        return """## [识 T1] 启动提示
+
+暂无相关锚点。
+
+---
+> 仅供参考，不影响决策"""
+
+    # 按类型分类锚点
+    problems = [a for a in all_anchors if a.get('type') == 'problem']
+    constraints = [a for a in all_anchors if a.get('type') == 'constraint']
+    patterns = [a for a in all_anchors if 'pattern' in a.get('type', '') or
+                '模式' in a.get('title', '') or 'pattern' in a.get('title', '').lower()]
+
+    # 应用关键词过滤
+    if keywords:
+        problems = _filter_anchors_by_keywords(problems, keywords)
+        constraints = _filter_anchors_by_keywords(constraints, keywords)
+        patterns = _filter_anchors_by_keywords(patterns, keywords)
+    else:
+        # 无关键词时，每类最多 3 个
+        problems = problems[-3:] if len(problems) > 3 else problems
+        constraints = constraints[-3:] if len(constraints) > 3 else constraints
+        patterns = patterns[-3:] if len(patterns) > 3 else patterns
+
+    lines = ["## [识 T1] 启动提示", ""]
+
+    # 相关风险 (Problems)
+    if problems:
+        lines.append("**相关风险**:")
+        for p in problems:
+            lines.append(f"- {_format_anchor_for_prompt(p)}")
+        lines.append("")
+
+    # 约束提醒 (Constraints)
+    if constraints:
+        lines.append("**约束提醒**:")
+        for c in constraints:
+            lines.append(f"- {_format_anchor_for_prompt(c)}")
+        lines.append("")
+
+    # 可复用模式 (Patterns)
+    if patterns:
+        lines.append("**可复用模式**:")
+        for m in patterns:
+            lines.append(f"- {_format_anchor_for_prompt(m)}")
+        lines.append("")
+
+    # 如果都没有匹配
+    if not problems and not constraints and not patterns:
+        lines.append("暂无与当前任务相关的锚点。")
+        lines.append("")
+
+    lines.extend([
+        "---",
+        "> 仅供参考，不影响决策"
+    ])
+
+    return '\n'.join(lines)
+
+
+def get_shi_t2_prompt(cwd: str, keywords: list[str] = None) -> str:
+    """
+    T2 惯性提示 (方案冻结后)。
+
+    查询类型: D(决策) + I(接口)
+    适用分身: 意、身、鼻
+
+    Args:
+        cwd: 当前工作目录
+        keywords: 可选的关键词过滤
+
+    Returns:
+        格式化的 T2 惯性提示
+    """
+    anchors_path = get_project_anchors_path(cwd)
+    all_anchors = _load_existing_anchors(anchors_path)
+
+    if not all_anchors:
+        return """## [识 T2] 设计参考
+
+暂无相关锚点。
+
+---
+> 仅供参考，决策权在本体"""
+
+    # 按类型分类锚点
+    decisions = [a for a in all_anchors if a.get('type') == 'decision']
+    interfaces = [a for a in all_anchors if a.get('type') == 'interface']
+
+    # 应用关键词过滤
+    if keywords:
+        decisions = _filter_anchors_by_keywords(decisions, keywords)
+        interfaces = _filter_anchors_by_keywords(interfaces, keywords)
+    else:
+        # 无关键词时，每类最多 5 个
+        decisions = decisions[-5:] if len(decisions) > 5 else decisions
+        interfaces = interfaces[-5:] if len(interfaces) > 5 else interfaces
+
+    lines = ["## [识 T2] 设计参考", ""]
+
+    # 历史决策 (Decisions)
+    if decisions:
+        lines.append("**历史决策**:")
+        lines.append("| ID | 决策 | 理由 |")
+        lines.append("|----|------|------|")
+        for d in decisions:
+            anchor_id = d.get('id', 'D000')
+            title = d.get('title', '')[:30]
+            # 尝试从内容中提取理由
+            content = d.get('content', '')
+            reason = ''
+            if '理由' in content or 'reason' in content.lower():
+                # 简单提取理由
+                for line in content.split('\n'):
+                    if '理由' in line or 'reason' in line.lower():
+                        reason = line.split(':', 1)[-1].strip()[:30]
+                        break
+            if not reason:
+                reason = content[:30].replace('\n', ' ')
+            lines.append(f"| [{anchor_id}] | {title} | {reason} |")
+        lines.append("")
+
+    # 相关接口 (Interfaces)
+    if interfaces:
+        lines.append("**相关接口**:")
+        for i in interfaces:
+            lines.append(f"- {_format_anchor_for_prompt(i)}")
+        lines.append("")
+
+    # 回滚经验 (从决策中提取)
+    rollback_info = []
+    for d in decisions:
+        content = d.get('content', '').lower()
+        if '回滚' in content or 'rollback' in content or '恢复' in content:
+            anchor_id = d.get('id', 'D000')
+            # 尝试提取回滚命令
+            for line in d.get('content', '').split('\n'):
+                if '`' in line:
+                    # 提取反引号中的命令
+                    import re
+                    cmds = re.findall(r'`([^`]+)`', line)
+                    if cmds:
+                        rollback_info.append(f"{anchor_id}: `{cmds[0]}`")
+                        break
+
+    if rollback_info:
+        lines.append("**回滚经验**:")
+        for r in rollback_info[:3]:
+            lines.append(f"- {r}")
+        lines.append("")
+
+    # 如果都没有匹配
+    if not decisions and not interfaces:
+        lines.append("暂无与当前设计相关的锚点。")
+        lines.append("")
+
+    lines.extend([
+        "---",
+        "> 仅供参考，决策权在本体"
+    ])
+
+    return '\n'.join(lines)
+
+
+def get_shi_prompt_for_avatar(
+    cwd: str,
+    avatar_type: str,
+    task_desc: str = ''
+) -> str:
+    """
+    根据分身类型自动选择 T1/T2 惯性提示。
+
+    分身配置:
+    | 分身 | T1 | T2 | 说明 |
+    |------|----|----|------|
+    | 眼/explorer | ✓ | - | 探索前提示已知问题 |
+    | 耳/analyst | - | - | 需求分析无需历史包袱 |
+    | 意/architect | - | ✓ | 设计时参考历史决策 |
+    | 身/斗战胜佛/impl | ✓ | ✓ | 实现前获取完整上下文 |
+    | 舌/tester | ✓ | - | 测试时提示已知陷阱 |
+    | 鼻/reviewer | ✓ | ✓ | 审查时参考约束和决策 |
+
+    Args:
+        cwd: 当前工作目录
+        avatar_type: 分身类型
+        task_desc: 可选的任务描述（用于提取关键词）
+
+    Returns:
+        合并的惯性提示字符串
+    """
+    # 规范化分身类型
+    normalized_type = _normalize_avatar_type(avatar_type)
+
+    if normalized_type == 'unknown':
+        return ""
+
+    # 获取配置
+    config = AVATAR_INERTIA_CONFIG.get(normalized_type, {'t1': False, 't2': False})
+
+    # 如果都不需要
+    if not config['t1'] and not config['t2']:
+        return ""
+
+    # 从任务描述中提取关键词
+    keywords = None
+    if task_desc:
+        # 简单的关键词提取：分词并过滤常见词
+        import re
+        words = re.findall(r'[\w\u4e00-\u9fff]+', task_desc)
+        # 过滤短词和常见词
+        stop_words = {'的', '是', '在', '和', '了', '有', '这', '个', '要', '会',
+                      'the', 'a', 'an', 'is', 'are', 'to', 'and', 'or', 'for'}
+        keywords = [w for w in words if len(w) > 1 and w.lower() not in stop_words]
+        keywords = keywords[:5]  # 最多 5 个关键词
+
+    prompts = []
+
+    # 获取 T1 (如果需要)
+    if config['t1']:
+        t1_prompt = get_shi_t1_prompt(cwd, keywords)
+        if t1_prompt and '暂无相关锚点' not in t1_prompt:
+            prompts.append(t1_prompt)
+
+    # 获取 T2 (如果需要)
+    if config['t2']:
+        t2_prompt = get_shi_t2_prompt(cwd, keywords)
+        if t2_prompt and '暂无相关锚点' not in t2_prompt:
+            prompts.append(t2_prompt)
+
+    if not prompts:
+        return ""
+
+    return '\n\n'.join(prompts)
+
+
+# ============================================================
+# 跨会话内观 API (Cross-Session Introspection API)
+# ============================================================
+
+def _parse_date(date_str: str) -> datetime:
+    """
+    解析日期字符串。
+
+    Args:
+        date_str: 'today', 'yesterday', '2026-01-13' 等格式
+
+    Returns:
+        datetime 对象
+    """
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    if date_str == 'today':
+        return today
+    elif date_str == 'yesterday':
+        return today - timedelta(days=1)
+    elif date_str == 'week':
+        # 返回本周一
+        return today - timedelta(days=today.weekday())
+    else:
+        # 尝试解析具体日期
+        try:
+            return datetime.strptime(date_str, '%Y-%m-%d')
+        except ValueError:
+            return today
+
+
+def _load_session_index() -> dict:
+    """加载会话索引文件"""
+    index_path = get_session_index_path()
+    if not index_path.exists():
+        return {"version": "1.0", "sessions": [], "projects": {}}
+
+    try:
+        with open(index_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return {"version": "1.0", "sessions": [], "projects": {}}
+
+
+def query_sessions_by_date(date: str = 'today', project: str = None) -> list[dict]:
+    """
+    按日期查询会话。
+
+    Args:
+        date: 日期字符串，支持 'today', 'yesterday', '2026-01-13' 格式
+        project: 可选，过滤特定项目
+
+    Returns:
+        匹配的会话列表
+    """
+    index = _load_session_index()
+    sessions = index.get('sessions', [])
+
+    target_date = _parse_date(date)
+
+    # 根据 date 类型确定时间范围
+    if date == 'week':
+        end_date = target_date + timedelta(days=7)
+    else:
+        end_date = target_date + timedelta(days=1)
+
+    matched = []
+    for session in sessions:
+        # 解析会话的创建/更新时间
+        session_time_str = session.get('updated_at') or session.get('created_at', '')
+        if not session_time_str:
+            continue
+
+        try:
+            session_time = datetime.fromisoformat(session_time_str)
+        except ValueError:
+            continue
+
+        # 时间范围过滤
+        if not (target_date <= session_time < end_date):
+            continue
+
+        # 项目过滤
+        if project:
+            session_project = session.get('project_path', '')
+            project_name = Path(session_project).name if session_project else ''
+            if project.lower() not in session_project.lower() and project.lower() not in project_name.lower():
+                continue
+
+        matched.append(session)
+
+    return matched
+
+
+def generate_daily_summary(date: str = 'today', project: str = None) -> str:
+    """
+    生成每日工作总结。
+
+    聚合当日所有会话的任务摘要和锚点数量。
+
+    Args:
+        date: 日期
+        project: 可选项目过滤
+
+    Returns:
+        格式化的每日总结字符串
+    """
+    sessions = query_sessions_by_date(date, project)
+
+    if not sessions:
+        date_display = date if date not in ('today', 'yesterday', 'week') else {
+            'today': '今天',
+            'yesterday': '昨天',
+            'week': '本周'
+        }.get(date, date)
+        return f"## {date_display}工作总结\n\n暂无会话记录。"
+
+    # 统计
+    total_anchors = sum(s.get('anchor_count', 0) for s in sessions)
+    projects_touched = set()
+    task_summaries = []
+
+    for session in sessions:
+        project_path = session.get('project_path', '')
+        if project_path:
+            projects_touched.add(Path(project_path).name)
+
+        summary = session.get('task_summary', '').strip()
+        if summary:
+            task_summaries.append(f"- {summary}")
+
+    # 格式化输出
+    date_display = date if date not in ('today', 'yesterday', 'week') else {
+        'today': '今天',
+        'yesterday': '昨天',
+        'week': '本周'
+    }.get(date, date)
+
+    lines = [
+        f"## {date_display}工作总结",
+        "",
+        f"**会话数**: {len(sessions)}",
+        f"**涉及项目**: {', '.join(projects_touched) if projects_touched else '无'}",
+        f"**沉淀锚点**: {total_anchors}",
+        "",
+    ]
+
+    if task_summaries:
+        lines.append("### 任务摘要")
+        lines.append("")
+        lines.extend(task_summaries)
+
+    return '\n'.join(lines)
+
+
+def introspect(scope: str = 'today', project: str = None) -> str:
+    """
+    内观命令核心实现。
+
+    scope 支持:
+    - 'today': 今日所有工作
+    - 'yesterday': 昨日工作
+    - 'week': 本周工作
+    - 'session': 当前会话（默认行为）
+
+    Returns:
+        内观报告字符串
+    """
+    if scope == 'session':
+        # 当前会话内观 - 返回提示信息
+        return "当前会话内观请使用 `/wukong 内观` 命令触发 PreCompact Hook。"
+
+    sessions = query_sessions_by_date(scope, project)
+
+    if not sessions:
+        scope_display = {
+            'today': '今天',
+            'yesterday': '昨天',
+            'week': '本周'
+        }.get(scope, scope)
+        return f"## 内观报告 - {scope_display}\n\n暂无会话记录可供内观。"
+
+    # 生成内观报告
+    scope_display = {
+        'today': '今天',
+        'yesterday': '昨天',
+        'week': '本周'
+    }.get(scope, scope)
+
+    lines = [
+        f"## 内观报告 - {scope_display}",
+        "",
+    ]
+
+    # 1. 工作概览
+    total_anchors = sum(s.get('anchor_count', 0) for s in sessions)
+    projects_touched = set()
+    for s in sessions:
+        p = s.get('project_path', '')
+        if p:
+            projects_touched.add(Path(p).name)
+
+    lines.extend([
+        "### 工作概览",
+        "",
+        f"- **会话数**: {len(sessions)}",
+        f"- **涉及项目**: {', '.join(sorted(projects_touched)) if projects_touched else '无'}",
+        f"- **沉淀锚点**: {total_anchors}",
+        "",
+    ])
+
+    # 2. 会话详情
+    lines.extend([
+        "### 会话详情",
+        "",
+    ])
+
+    for i, session in enumerate(sessions, 1):
+        session_id = session.get('session_id', 'unknown')[:8]
+        project_name = Path(session.get('project_path', '')).name or 'unknown'
+        task_summary = session.get('task_summary', '(无摘要)')
+        anchor_count = session.get('anchor_count', 0)
+        updated_at = session.get('updated_at', '')[:16].replace('T', ' ')
+
+        lines.extend([
+            f"**{i}. [{project_name}] {session_id}**",
+            f"   - 时间: {updated_at}",
+            f"   - 任务: {task_summary}",
+            f"   - 锚点: {anchor_count}",
+            "",
+        ])
+
+    # 3. 反思提示
+    lines.extend([
+        "### 末那识扫描",
+        "",
+        "> 以下问题帮助识别潜在的认知偏差:",
+        "",
+        "- 是否有重复出现的问题/错误？",
+        "- 是否有被跳过的验证步骤？",
+        "- 是否有值得沉淀但未记录的决策？",
+        "",
+    ])
+
+    return '\n'.join(lines)
 
 
 def save_context(cwd: str, compact_context: str, session_id: str):
