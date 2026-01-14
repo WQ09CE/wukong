@@ -407,7 +407,21 @@ def extract_decisions(messages: list[dict]) -> list[dict]:
     ]
 
     for msg in messages:
+        # Skip non-user/assistant messages
+        if not is_user_or_assistant_message(msg):
+            continue
+
         content = get_message_content(msg)
+
+        # Skip system instructions and internal content
+        if should_skip_content(content):
+            continue
+
+        # Clean internal tags
+        content = clean_content(content)
+        if not content:
+            continue
+
         for pattern in decision_patterns:
             if re.search(pattern, content, re.IGNORECASE):
                 # 提取包含决策的段落
@@ -431,7 +445,21 @@ def extract_constraints(messages: list[dict]) -> list[dict]:
     ]
 
     for msg in messages:
+        # Skip non-user/assistant messages
+        if not is_user_or_assistant_message(msg):
+            continue
+
         content = get_message_content(msg)
+
+        # Skip system instructions and internal content
+        if should_skip_content(content):
+            continue
+
+        # Clean internal tags
+        content = clean_content(content)
+        if not content:
+            continue
+
         for pattern in constraint_patterns:
             if re.search(pattern, content, re.IGNORECASE):
                 constraints.append({
@@ -455,7 +483,17 @@ def extract_interfaces(messages: list[dict]) -> list[dict]:
     ]
 
     for msg in messages:
+        # Skip non-user/assistant messages
+        if not is_user_or_assistant_message(msg):
+            continue
         content = get_message_content(msg)
+        # Skip system instructions and internal content
+        if should_skip_content(content):
+            continue
+        # Clean internal tags
+        content = clean_content(content)
+        if not content:
+            continue
         for pattern in interface_patterns:
             if re.search(pattern, content, re.IGNORECASE):
                 interfaces.append({
@@ -478,7 +516,17 @@ def extract_problems(messages: list[dict]) -> list[dict]:
     ]
 
     for msg in messages:
+        # Skip non-user/assistant messages
+        if not is_user_or_assistant_message(msg):
+            continue
         content = get_message_content(msg)
+        # Skip system instructions and internal content
+        if should_skip_content(content):
+            continue
+        # Clean internal tags
+        content = clean_content(content)
+        if not content:
+            continue
         for pattern in problem_patterns:
             if re.search(pattern, content, re.IGNORECASE):
                 problems.append({
@@ -504,6 +552,96 @@ def get_message_content(msg: dict) -> str:
                 if isinstance(item, dict) and item.get('type') == 'text'
             )
     return ''
+
+
+# ============================================================
+# Content Filtering (内容过滤)
+# ============================================================
+
+# Patterns that indicate system instructions or internal content
+SKIP_CONTENT_PATTERNS = [
+    r'^#\s*Wukong Multi-Agent',          # Wukong system instructions
+    r'^#\s*Jenkins Build Skill',         # Skill file content
+    r'^#\s*Explorer Skill',              # Skill file content
+    r'^#\s*Implementer Skill',           # Skill file content
+    r'^#\s*Architect Skill',             # Skill file content
+    r'^#\s*Tester Skill',                # Skill file content
+    r'^#\s*Code Reviewer Skill',         # Skill file content
+    r'^#\s*Requirements Analyst Skill',  # Skill file content
+    r'^You are now operating as',        # Identity declaration
+    r'^You are \*\*Wukong',              # Identity declaration
+    r'^<command-message>',               # Command tags
+    r'^<command-name>',                  # Command tags
+    r'^\s*<thinking>',                   # Internal thinking tags
+    r'^ARGUMENTS:',                      # Skill arguments
+    r'^## Activation \(轻量启动\)',      # Wukong activation section
+    r'^## Your Identity',                # Wukong identity section
+    r'^## Six Roots Avatar System',      # Wukong system section
+]
+
+# Tags to clean from content
+INTERNAL_TAGS_PATTERN = re.compile(
+    r'<(?:thinking|command-message|command-name|command-args|system-reminder|antml:[^>]+)>.*?</(?:thinking|command-message|command-name|command-args|system-reminder|antml:[^>]+)>',
+    re.DOTALL
+)
+
+OPENING_TAGS_PATTERN = re.compile(
+    r'<(?:thinking|command-message|command-name|command-args|system-reminder|antml:[^>]+)>'
+)
+
+
+def should_skip_content(content: str) -> bool:
+    """
+    Check if content should be skipped (system instructions, skill files, etc.)
+
+    Args:
+        content: The content to check
+
+    Returns:
+        True if content should be skipped
+    """
+    if not content:
+        return True
+
+    content_stripped = content.strip()
+
+    for pattern in SKIP_CONTENT_PATTERNS:
+        if re.match(pattern, content_stripped, re.IGNORECASE):
+            return True
+
+    return False
+
+
+def clean_content(content: str) -> str:
+    """
+    Clean internal tags and artifacts from content.
+
+    Args:
+        content: The content to clean
+
+    Returns:
+        Cleaned content
+    """
+    if not content:
+        return ''
+
+    # Remove complete tag pairs
+    cleaned = INTERNAL_TAGS_PATTERN.sub('', content)
+
+    # Remove orphan opening tags
+    cleaned = OPENING_TAGS_PATTERN.sub('', cleaned)
+
+    # Clean up whitespace
+    cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
+    cleaned = cleaned.strip()
+
+    return cleaned
+
+
+def is_user_or_assistant_message(msg: dict) -> bool:
+    """Check if message is from user or assistant (not system)"""
+    msg_type = msg.get('type', '')
+    return msg_type in ('user', 'assistant', 'human')
 
 
 def extract_current_task(messages: list[dict]) -> str:
