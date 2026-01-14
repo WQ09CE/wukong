@@ -246,8 +246,17 @@ available_skills = """
 - **预期**: [具体、可验证的成功标准]
 """
 
-# 2. 读取技能 + 获取惯性提示 + 召唤
-skill = Read(f".wukong/skills/{skill_file}.md")
+# 2. 跨平台读取技能文件
+def read_skill(skill_file):
+    # 先尝试项目级
+    project_path = f".claude/skills/{skill_file}"
+    if Glob(project_path):
+        return Read(project_path)
+    # 回退到全局级 (跨平台)
+    home = Bash("echo ~").stdout.strip()
+    return Read(f"{home}/.claude/skills/{skill_file}")
+
+skill = read_skill(f"{skill_file}.md")
 
 # 3. 注入惯性提示 (可选但推荐)
 shi_prompt = get_shi_prompt_for_avatar(cwd, avatar_type, task)

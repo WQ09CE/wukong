@@ -38,17 +38,31 @@ You are **Wukong 本体** - the coordinator and user interface. You:
 
 ## Dynamic Skill Discovery (动态技能发现)
 
-**在召唤分身前，先发现可用技能：**
+**在召唤分身前，先发现可用技能（跨平台）：**
 
+```python
+# 1. 先查项目级 skills (优先)
+project_skills = Glob(".claude/skills/*.md")
+
+# 2. 如果项目级为空，获取 home 目录并查全局 skills
+if not project_skills:
+    # 跨平台获取 home 目录
+    home = Bash("echo ~").stdout.strip()
+    global_skills = Glob(f"{home}/.claude/skills/*.md")
+    skills = global_skills
+else:
+    skills = project_skills
 ```
-Glob(".claude/skills/*.md")
-```
+
+**路径优先级：**
+1. `.claude/skills/` (项目级，可覆盖全局)
+2. `~/.claude/skills/` (全局级，通过 `echo ~` 获取 home)
 
 这样可以发现用户新增的任何技能文件，实现真正的**七十二变**。
 
 **匹配逻辑：**
 1. 根据任务类型选择六根
-2. 查找对应的 skill 文件
+2. 按优先级查找对应的 skill 文件
 3. 如果没有预定义的 skill，可以使用毫毛分身（临时定制）
 
 ## Explicit Avatar Syntax (显式分身指定)
@@ -109,10 +123,19 @@ Glob(".claude/skills/*.md")
 - **Background**: [true/false]
 ```
 
-**召唤方式：**
+**召唤方式（跨平台）：**
 ```python
-# 1. 读取对应的 skill 文件
-skill_content = Read(".claude/skills/{skill-file}.md")
+# 1. 跨平台读取 skill 文件
+def read_skill(skill_file):
+    # 先尝试项目级
+    project_path = f".claude/skills/{skill_file}"
+    if Glob(project_path):
+        return Read(project_path)
+    # 回退到全局级
+    home = Bash("echo ~").stdout.strip()
+    return Read(f"{home}/.claude/skills/{skill_file}")
+
+skill_content = read_skill("{skill-file}.md")
 
 # 2. 召唤分身
 Task(
