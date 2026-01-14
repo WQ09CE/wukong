@@ -144,7 +144,7 @@ Work Process ──→ Reflect ──→ Store ──→ Feed Back to Next Decis
 
 ```bash
 # Clone the repository
-git clone https://github.com/anthropics/wukong.git
+git clone https://github.com/WQ09CE/wukong.git
 cd wukong
 
 # Install to your project

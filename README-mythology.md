@@ -83,7 +83,7 @@
 
 ```bash
 # 克隆并安装
-git clone https://github.com/anthropics/wukong.git
+git clone https://github.com/WQ09CE/wukong.git
 cd wukong
 ./install.sh /path/to/your/project
 

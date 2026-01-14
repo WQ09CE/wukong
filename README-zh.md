@@ -142,7 +142,7 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/anthropics/wukong.git
+git clone https://github.com/WQ09CE/wukong.git
 cd wukong
 
 # 安装到目标项目
