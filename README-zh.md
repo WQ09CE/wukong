@@ -140,6 +140,8 @@
 
 ### 安装
 
+#### Linux / macOS
+
 ```bash
 # 克隆仓库
 git clone https://github.com/WQ09CE/wukong.git
@@ -151,6 +153,25 @@ cd wukong
 # 或安装到当前目录
 ./install.sh
 ```
+
+#### Windows (PowerShell)
+
+```powershell
+# 克隆仓库
+git clone https://github.com/WQ09CE/wukong.git
+cd wukong
+
+# 安装到目标项目
+.\install.ps1 -TargetDir "C:\path\to\your\project"
+
+# 或安装到当前目录
+.\install.ps1
+```
+
+> **提示：** 如果遇到执行策略错误，请运行：
+> ```powershell
+> Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+> ```
 
 安装脚本会：
 1. 复制规则、技能、命令到项目的 `.claude/` 目录
@@ -192,7 +213,8 @@ wukong/
 │   ├── commands/             # 命令处理器
 │   └── hooks/                # PreCompact Hook (慧)
 │
-├── install.sh                # 安装脚本
+├── install.sh                # 安装脚本 (Linux/macOS)
+├── install.ps1               # 安装脚本 (Windows)
 ├── README.md                 # English README
 └── README-zh.md              # 中文 README
 

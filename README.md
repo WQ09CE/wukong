@@ -142,6 +142,8 @@ Work Process ──→ Reflect ──→ Store ──→ Feed Back to Next Decis
 
 ### Installation
 
+#### Linux / macOS
+
 ```bash
 # Clone the repository
 git clone https://github.com/WQ09CE/wukong.git
@@ -153,6 +155,25 @@ cd wukong
 # Or install to current directory
 ./install.sh
 ```
+
+#### Windows (PowerShell)
+
+```powershell
+# Clone the repository
+git clone https://github.com/WQ09CE/wukong.git
+cd wukong
+
+# Install to your project
+.\install.ps1 -TargetDir "C:\path\to\your\project"
+
+# Or install to current directory
+.\install.ps1
+```
+
+> **Note:** If you get an execution policy error, run:
+> ```powershell
+> Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+> ```
 
 The installer will:
 1. Copy rules, skills, and commands to `.claude/` in your project
@@ -194,7 +215,8 @@ wukong/
 │   ├── commands/             # Command handlers
 │   └── hooks/                # PreCompact Hook (Reflection)
 │
-├── install.sh                # Installer script
+├── install.sh                # Installer script (Linux/macOS)
+├── install.ps1               # Installer script (Windows)
 ├── README.md                 # English README
 └── README-zh.md              # Chinese README
 
