@@ -81,6 +81,8 @@
 
 ## 安装
 
+### Linux / macOS
+
 ```bash
 # 克隆并安装
 git clone https://github.com/WQ09CE/wukong.git
@@ -89,6 +91,18 @@ cd wukong
 
 # 或安装到当前目录
 ./install.sh
+```
+
+### Windows (PowerShell)
+
+```powershell
+# 克隆并安装
+git clone https://github.com/WQ09CE/wukong.git
+cd wukong
+.\install.ps1 -TargetDir "C:\path\to\your\project"
+
+# 或安装到当前目录
+.\install.ps1
 ```
 
 安装器会自动：
