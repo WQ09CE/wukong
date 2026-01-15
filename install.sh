@@ -153,20 +153,28 @@ fi
 echo ""
 
 # ============================================================
-# 4. 安装全局 Hooks
+# 4. 安装全局组件 (Global Components)
 # ============================================================
-echo -e "${BLUE}[2/3] Global Hooks${NC}"
+echo -e "${BLUE}[2/3] Global Components${NC}"
 
-GLOBAL_WUKONG_DIR="$HOME/.wukong"
+GLOBAL_CLAUDE_DIR="$HOME/.claude"
 GLOBAL_HOOKS_DIR="$GLOBAL_WUKONG_DIR/hooks"
 
 mkdir -p "$GLOBAL_HOOKS_DIR"
+mkdir -p "$GLOBAL_CLAUDE_DIR/commands"
+
+# 复制全局命令 (schedule.md 等)
+if [ -d "$SOURCE_DIR/commands" ] && ls "$SOURCE_DIR"/commands/*.md 1>/dev/null 2>&1; then
+    cp "$SOURCE_DIR"/commands/*.md "$GLOBAL_CLAUDE_DIR/commands/"
+    GCMD_COUNT=$(ls -1 "$SOURCE_DIR"/commands/*.md 2>/dev/null | wc -l | tr -d ' ')
+    echo -e "  ${GREEN}[ok]${NC} Commands → ~/.claude/commands/ ($GCMD_COUNT files)"
+fi
 
 # 复制 hook 脚本
 if [ -d "$SOURCE_DIR/hooks" ] && ls "$SOURCE_DIR"/hooks/*.py 1>/dev/null 2>&1; then
     cp "$SOURCE_DIR"/hooks/*.py "$GLOBAL_HOOKS_DIR/"
     HOOK_COUNT=$(ls -1 "$SOURCE_DIR"/hooks/*.py 2>/dev/null | wc -l | tr -d ' ')
-    echo -e "  ${GREEN}[ok]${NC} Installed hooks to ~/.wukong/hooks/ ($HOOK_COUNT files)"
+    echo -e "  ${GREEN}[ok]${NC} Hooks → ~/.wukong/hooks/ ($HOOK_COUNT files)"
 else
     echo -e "  ${YELLOW}[skip]${NC} No hook scripts found"
 fi
