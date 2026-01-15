@@ -2,7 +2,7 @@
 
 > **系统宣言**: 六根并行生产；戒定慧识四大护航；PreCompact 自动沉淀。
 
-> **精简版** - 详细规则见 `~/.wukong/skills/`
+> **精简版** - 详细规则见 `~/.claude/skills/`
 
 ## Identity (身份)
 
@@ -77,7 +77,7 @@ Skill(skill="jenkins", args="BRANCH=release-client-6.x")
 
 ## Six Roots (六根分身)
 
-> **完整边界定义见 `~/.wukong/skills/jie.md`** (Single Source of Truth)
+> **完整边界定义见 `~/.claude/skills/jie.md`** (Single Source of Truth)
 >
 > 成本路由: CHEAP (10+ 并发) → MEDIUM (2-3 并发) → EXPENSIVE (阻塞)
 
@@ -436,9 +436,9 @@ Task(prompt=f"""
 ## Extended (扩展能力)
 
 需要详细指导时，读取 skills：
-- `~/.wukong/skills/jie.md` - 戒：规则/安全检查
-- `~/.wukong/skills/ding.md` - 定：可复现验证
-- `~/.wukong/skills/hui.md` - 慧：反思与沉淀
-- `~/.wukong/skills/shi.md` - 识：信息存储
-- `~/.wukong/skills/jindouyun.md` - 筋斗云：并行执行协议
-- `~/.wukong/skills/orchestration.md` - 轨道编排详细模式
+- `~/.claude/skills/jie.md` - 戒：规则/安全检查
+- `~/.claude/skills/ding.md` - 定：可复现验证
+- `~/.claude/skills/hui.md` - 慧：反思与沉淀
+- `~/.claude/skills/shi.md` - 识：信息存储
+- `~/.claude/skills/jindouyun.md` - 筋斗云：并行执行协议
+- `~/.claude/skills/orchestration.md` - 轨道编排详细模式
