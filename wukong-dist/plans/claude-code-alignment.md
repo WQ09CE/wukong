@@ -473,7 +473,7 @@ Session 2 starts:
 |------|--------|--------|
 | `.wukong/skills/explorer.md` | Add Subagent-specific instructions | Low |
 | `.wukong/skills/implementer.md` | Add territory declaration protocol | Low |
-| `.wukong/skills/introspector.md` | Align with PreCompact hook | Medium |
+| `.wukong/skills/hui.md (merged from introspector)` | Align with PreCompact hook | Medium |
 | `NEW: .wukong/skills/subagent-base.md` | Common Subagent instructions | Medium |
 
 ### Priority 3: Context Management

@@ -355,6 +355,127 @@ Task(
 )
 ```
 
+## Notepad 知识传承
+
+> 跨任务积累和传递知识，避免重复犯错，利用成功模式。
+
+### Notepad 结构
+
+```
+.wukong/notepads/{plan-name}/
+├── requirements.md    # 需求规格书
+├── design.md          # 架构设计
+├── learnings.md       # 发现和经验
+├── decisions.md       # 决策记录
+├── issues.md          # 问题跟踪
+├── review.md          # 审查结果
+├── verification.md    # 验证记录
+└── breakthroughs.md   # 技术突破记录 (Eureka!)
+```
+
+### 读取知识
+
+**BEFORE starting any significant task:**
+
+1. Check if notepad exists: `Glob(".wukong/notepads/{plan-name}/*.md")`
+2. Read relevant entries: `learnings.md`, `issues.md`, `decisions.md`
+3. Include in task context:
+
+```markdown
+## 继承的知识
+
+### 需要遵循的模式
+- {from learnings.md}
+
+### 需要避免的问题
+- {from issues.md}
+
+### 已做出的决策
+- {from decisions.md}
+```
+
+### 记录知识 (关键模板)
+
+#### learnings.md
+
+```markdown
+# 学习记录: {Plan Name}
+
+## {Date} - {Context}
+- **发现**: {what you learned}
+- **示例**: {code or reference}
+- **应用场景**: {when to apply}
+
+## 代码库规范
+- {convention}
+
+## 有效模式
+- {pattern}
+```
+
+#### breakthroughs.md (Eureka!)
+
+> 捕获技术突破，转化为可复用的知识资产。
+
+**触发信号**: "终于搞定了！" / 解决阻塞>1小时 / 性能提升>50%
+
+```markdown
+## {Date} - {Breakthrough Title}
+
+### 一句话总结
+{achievement}
+
+### 问题描述
+{what was blocking}
+
+### 核心洞察
+{key insight}
+
+### 可复用模式
+{abstracted pattern}
+
+### 标签
+#performance #debugging #architecture
+```
+
+### 向分身传递知识
+
+```python
+Task(
+    prompt=f"""
+## 继承的知识
+
+### 代码库规范
+- 使用 snake_case 命名 Python 函数
+- C++ 类使用 PascalCase
+
+### 已知问题
+- [P001] FFmpeg 在某些格式下会泄漏内存
+
+### 已有决策
+- [D001] 使用 ONNX Runtime 而非 TensorRT
+
+## 你的任务
+{actual task description}
+"""
+)
+```
+
+### 知识生命周期
+
+```
+1. 开始任务 └─ 读取现有知识
+2. 任务执行中 └─ 记录发现
+3. 任务完成 └─ 记录学习/决策/问题/验证
+4. 下一个任务 └─ 继承知识，在此基础上构建
+```
+
+### 初始化 Notepad
+
+```bash
+cp -r .wukong/templates/notepad .wukong/notepads/{plan-name}
+```
+
 ## 禁忌
 
 **NEVER**:

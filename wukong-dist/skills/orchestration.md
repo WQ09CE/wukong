@@ -275,6 +275,271 @@ On verification failure:
 └── Prajna Gate not met -> Body decides whether to accept L2 downgrade
 ```
 
+### Pipeline Status Definitions
+
+| Status | Meaning | Next Action |
+|--------|---------|-------------|
+| **PASS** | Pass current gate | Proceed to next gate |
+| **REJECT** | Serious violation | Return to avatar for redo, pipeline terminates |
+| **RETRY** | Fixable issue | Avatar fixes then retry current gate |
+| **SKIP** | Can skip | Proceed to next gate directly |
+| **FEEDBACK** | Needs feedback | Generate rule patch suggestion, continue flow |
+
+### State Transition Diagram
+
+```
+                    ┌──────────────────────────────────────────────────────┐
+                    │                                                      │
+                    ▼                                                      │
+Avatar Output ──→ [Sila] ──→ PASS ──→ [Samadhi] ──→ PASS ──→ [Prajna] ──→ PASS ──→ [Alaya] ──→ Done
+                │                   │                   │
+                │ REJECT            │ RETRY             │ FEEDBACK
+                ▼                   ▼                   ▼
+           Return for redo     Fix then retry     Rule patch suggestion
+                │                   │                   │
+                └───────────────────┴───────────────────┘
+                        Re-enter pipeline
+```
+
+### Progressive Gate Rules
+
+#### 1. Sila Gate → Samadhi Gate
+
+| Sila Result | Enter Samadhi? | Note |
+|-------------|----------------|------|
+| **PASS** | ✅ YES | Normal flow |
+| **REJECT** | ❌ NO | Return for redo, don't enter Samadhi |
+
+**Key**: Sila REJECT = Pipeline terminates, must redo
+
+```
+Sila checklist:
+├── Contract completeness → Missing required fields → REJECT
+├── Do/Don't boundaries → Boundary violation → REJECT
+└── Security check → Dangerous operations/sensitive info → REJECT
+```
+
+#### 2. Samadhi Gate → Prajna Gate
+
+| Samadhi Result | Evidence Level | Enter Prajna? | Note |
+|----------------|----------------|---------------|------|
+| **PASS + L2/L3** | High | ✅ YES | Normal flow |
+| **PASS + L1** | Medium | ⚠️ Conditional | Simple tasks can skip Prajna |
+| **PASS + L0** | Low | ❌ NO | Return to add evidence |
+| **RETRY** | - | ❌ NO | Fix then retry Samadhi |
+
+**Conditions to skip Prajna** (any one allows skip):
+- Track D (Direct) simple tasks
+- Eye/Ear/Nose exploration/analysis output (non-implementation)
+- User explicitly requests fast completion
+- Single file, <20 lines small change
+
+#### 3. Prajna Gate → Alaya
+
+| Prajna Result | Write to Alaya? | Note |
+|---------------|-----------------|------|
+| **Found anchor worth preserving** | ✅ YES | Meets threshold, write |
+| **No new anchors** | ⭕ Optional | Update compact.md |
+| **Found rule issues** | ⚠️ FEEDBACK | Generate rule patch suggestion |
+| **Found backtrack issue** | 🔄 Backtrack | Return to Sila/Samadhi for recheck |
+
+**Alaya write threshold** (at least one):
+- Repetition ≥ 2: Similar problem/decision appeared 2+ times
+- High impact: Involves architecture, security, performance, multi-module
+- Reusable: Has reference value in other projects/scenarios
+
+### Failure Handling Classification
+
+#### Severe Failure (REJECT) - Must Redo
+
+| Failure Type | Gate | Detection | Handling |
+|--------------|------|-----------|----------|
+| **Security violation** | Sila | Sensitive path/dangerous command/credential exposure | Reject immediately, no retry |
+| **Contract missing** | Sila | Required field empty | Return, require completion |
+| **Boundary violation** | Sila | Do/Don't boundary violated | Return, point out violation |
+| **L0 speculation no evidence** | Samadhi | "Should work"/"Probably can" | Return, require verification |
+
+#### Fixable Failure (RETRY) - Fix Then Retry
+
+| Failure Type | Gate | Detection | Handling |
+|--------------|------|-----------|----------|
+| **Format non-compliant** | Sila | Non-critical field missing/format error | Warn + require supplement |
+| **L1 evidence insufficient** | Samadhi | Only reference, no local verification | Require L2 verification |
+| **Test failure** | Samadhi | pytest/ctest failed | Avatar fixes then retry |
+| **Build failure** | Samadhi | cmake/make error | Avatar fixes then retry |
+| **Type check failure** | Samadhi | mypy error | Avatar fixes then retry |
+
+**RETRY limits**:
+```
+1st failure → Fix then retry
+2nd failure → Analyze root cause, then fix
+3rd failure → Stop, escalate to user
+```
+
+#### Feedback Failure (FEEDBACK) - Needs Rule Improvement
+
+| Failure Type | Gate | Detection | Handling |
+|--------------|------|-----------|----------|
+| **Rule conflict** | Prajna | Two rules contradict | Generate rule patch suggestion |
+| **Efficiency issue** | Prajna | Obvious parallel/cache opportunity | Record deviation, suggest improvement |
+| **Repeated issue** | Prajna | Similar issue 2nd occurrence | Preserve as problem anchor |
+| **Boundary unclear** | Prajna | Do/Don't definition unclear | Suggest tighten/loosen rule |
+
+### Backtracking Rules
+
+#### When to Backtrack?
+
+```
+Prajna found issue
+        │
+        ▼
+┌───────────────────────────────────────────────────────────┐
+│                    Issue Type Assessment                   │
+├───────────────────────────────────────────────────────────┤
+│ 1. Rule misunderstanding  → Backtrack to Sila (missed/misjudged)    │
+│ 2. Insufficient verification → Backtrack to Samadhi (evidence level) │
+│ 3. Efficiency suggestion  → No backtrack, record to Alaya (FEEDBACK) │
+│ 4. New constraint found   → No backtrack, add to anchors (preserve)  │
+└───────────────────────────────────────────────────────────┘
+```
+
+| Backtrack Type | Trigger Condition | Target | Recheck Content |
+|----------------|-------------------|--------|-----------------|
+| **Backtrack to Sila** | Found missed security issue | Sila | Full security check |
+| **Backtrack to Sila** | Found Contract violation | Sila | Contract completeness |
+| **Backtrack to Samadhi** | Found unreliable evidence | Samadhi | Add L2/L3 verification |
+| **Backtrack to Samadhi** | Found missing test scenario | Samadhi | Add test cases |
+
+**Backtrack limits**:
+```
+Same avatar output backtrack count:
+├── Backtrack 1 time → Normal handling
+├── Backtrack 2 times → Warning, detailed analysis
+└── Backtrack 3 times → Stop, escalate to user
+```
+
+### Track-Specific Verification Rules
+
+| Track | Sila Focus | Samadhi Threshold | Prajna Depth | Skip Prajna? |
+|-------|------------|-------------------|--------------|--------------|
+| **Feature** | Contract complete | L2 + AC tests all pass | Full introspection | ❌ Cannot skip |
+| **Fix** | Security + regression risk | L2 + repro case + regression test | Problem anchor extraction | ⚠️ Small fix can skip |
+| **Refactor** | Boundary + behavior preserved | L2 + behavior unchanged proof | Decision anchor extraction | ❌ Cannot skip |
+| **Direct** | Basic security check | L1 acceptable | Can skip | ✅ Can skip |
+
+### Parallel Verification Rules
+
+> After each parallel batch completes, must immediately verify before starting next batch.
+
+```
+❌ Verify at end (problems accumulate):
+Batch1 → Batch2 → Batch3 → Final verify → Found Batch1 issue → Major rework
+
+✅ Batch verify (find early):
+Batch1 → Verify ✓ → Batch2 → Verify ✓ → Batch3 → Verify ✓ → Done
+```
+
+**Batch Verification Flow**:
+```
+Parallel batch completes
+      │
+      ▼
+┌─────────────────────────────────────┐
+│ Batch Verification (simplified 3 gates) │
+├─────────────────────────────────────┤
+│ 1. Quick Sila: Contract existence check  │
+│ 2. Quick Samadhi: File exists + syntax   │
+│ 3. Skip Prajna: Batch verify no reflect  │
+└─────────────────────────────────────┘
+      │
+      ├─ PASS → Continue next batch
+      └─ FAIL → Stop, fix then retry current batch
+```
+
+### Verification Commands Quick Reference
+
+**Quick Verification (within batch)**:
+```bash
+# Python
+python -m py_compile {file}  # Syntax check
+python -c "import {module}"  # Import check
+
+# C++
+cmake --build build --target {target}  # Incremental build
+
+# General
+ls -la {expected_files}  # File existence check
+```
+
+**Full Verification (final)**:
+```bash
+# Python
+ruff check . && mypy src/ && pytest -v
+
+# C++
+cmake -B build && cmake --build build -j && ctest --test-dir build
+
+# FastAPI
+pytest tests/api/ -v && curl http://localhost:8000/health
+```
+
+### Pipeline Status Report Template
+
+```markdown
+## Verification Pipeline Report
+
+**Task**: {task_name}
+**Track**: {track}
+**Avatar**: {avatar}
+
+### Pipeline Status
+
+| Gate | Status | Detail |
+|------|--------|--------|
+| Sila | ✅ PASS | Contract complete, no security issues |
+| Samadhi | ✅ PASS (L2) | Tests passed 15/15 |
+| Prajna | ✅ PASS | Extracted anchor [D003] |
+| Alaya | ✅ Written | anchors.md updated |
+
+### Verification Details
+
+#### Sila Gate
+- [x] Contract completeness
+- [x] Do/Don't boundaries
+- [x] Security check
+
+#### Samadhi Gate
+- **Evidence Level**: L2
+- **Verification Command**: `pytest -v`
+- **Result**: 15 passed, 0 failed
+
+#### Prajna Gate
+- **Introspection Score**: B
+- **New Anchor**: [D003] xxx
+- **Rule Patch**: None
+
+### Backtrack Record (if any)
+| Count | Target | Reason | Result |
+|-------|--------|--------|--------|
+| 1 | Samadhi | Missing regression test | Supplemented |
+```
+
+### Pipeline Constraints
+
+**NEVER**:
+- Skip Sila to directly enter Samadhi
+- L0 speculation pass Samadhi
+- Trigger Alaya write without threshold check
+- Unlimited backtrack (max 3 times)
+- Continue next batch after batch verification fails
+
+**ALWAYS**:
+- Sila REJECT = Pipeline terminates
+- Samadhi at least L1, complex tasks at least L2
+- Prajna check threshold before triggering Alaya
+- Record backtrack reason and count
+- Verify batch before continuing
+
 ---
 
 ### Track B: Bug Fix (问题修复)

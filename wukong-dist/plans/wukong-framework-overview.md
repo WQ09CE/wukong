@@ -642,7 +642,7 @@ introspection:
 │   ├── 01-task-orchestration.md # 编排协议
 │   ├── 02-verification.md      # 验证协议
 │   ├── 03-avatars.md           # 六根分身系统
-│   ├── 04-wisdom.md            # 知识传承协议
+│   ├── # (已合并到 shi.md)
 │   └── 05-ruyi-protocol.md     # 金箍棒协议
 │
 ├── skills/                     # 分身技能 (Multiagent 共享)
@@ -652,10 +652,10 @@ introspection:
 │   ├── tester.md               # 舌分身技能
 │   ├── implementer.md          # 斗战胜佛技能
 │   ├── architect.md            # 意分身技能
-│   ├── introspector.md         # 内观悟空技能
+│   ├── # (已合并到 hui.md)
 │   ├── orchestration.md        # 编排详细模式
 │   ├── verification.md         # 验证详细命令
-│   ├── wisdom.md               # 知识传承细节
+│   ├── # (已合并到 shi.md)
 │   └── ruyi.md                 # 金箍棒完整协议
 │
 ├── commands/                   # 命令定义
