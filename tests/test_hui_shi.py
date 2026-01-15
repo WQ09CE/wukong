@@ -33,7 +33,8 @@ from importlib.util import spec_from_file_location, module_from_spec
 
 def load_hui_module():
     """动态加载 hui-extract 模块"""
-    hui_path = Path(__file__).parent / 'hui-extract.py'
+    # hui-extract.py is in wukong-dist/hooks/ directory
+    hui_path = Path(__file__).parent.parent / 'wukong-dist' / 'hooks' / 'hui-extract.py'
     spec = spec_from_file_location("hui_extract", hui_path)
     hui = module_from_spec(spec)
     spec.loader.exec_module(hui)
