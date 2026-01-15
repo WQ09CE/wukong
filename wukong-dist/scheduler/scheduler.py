@@ -56,12 +56,12 @@ class TrackType(Enum):
 # ============== 配置 ==============
 
 AVATAR_CONFIG: Dict[AvatarType, dict] = {
-    AvatarType.EYE:    {"cost": CostTier.CHEAP,     "model": "haiku",  "max_concurrent": 10, "background": "必须"},
-    AvatarType.EAR:    {"cost": CostTier.CHEAP,     "model": "haiku",  "max_concurrent": 10, "background": "可选"},
-    AvatarType.NOSE:   {"cost": CostTier.CHEAP,     "model": "haiku",  "max_concurrent": 5,  "background": "必须"},
+    AvatarType.EYE:    {"cost": CostTier.CHEAP,     "model": "sonnet", "max_concurrent": 10, "background": "必须", "thinking": True},
+    AvatarType.EAR:    {"cost": CostTier.CHEAP,     "model": "sonnet", "max_concurrent": 10, "background": "可选"},
+    AvatarType.NOSE:   {"cost": CostTier.CHEAP,     "model": "sonnet", "max_concurrent": 5,  "background": "必须"},
     AvatarType.TONGUE: {"cost": CostTier.MEDIUM,    "model": "sonnet", "max_concurrent": 3,  "background": "可选"},
-    AvatarType.BODY:   {"cost": CostTier.EXPENSIVE, "model": "opus",   "max_concurrent": 1,  "background": "禁止"},
-    AvatarType.MIND:   {"cost": CostTier.EXPENSIVE, "model": "opus",   "max_concurrent": 1,  "background": "禁止"},
+    AvatarType.BODY:   {"cost": CostTier.EXPENSIVE, "model": "opus",   "max_concurrent": 1,  "background": "禁止", "thinking": True},
+    AvatarType.MIND:   {"cost": CostTier.EXPENSIVE, "model": "opus",   "max_concurrent": 1,  "background": "禁止", "thinking": True},
 }
 
 TRACK_DAG: Dict[TrackType, List[List[AvatarType]]] = {
@@ -375,7 +375,9 @@ def parse_territory_declaration(text: str) -> List[Territory]:
 def generate_task_prompt(avatar: AvatarType, task: str, expected_outcome: str,
                         context: str, must_do: List[str], must_not: List[str]) -> str:
     config = AVATAR_CONFIG[avatar]
-    prefix = "ultrathink\n\n" if avatar == AvatarType.MIND else ""
+    # Enable ultrathink for avatars that need deep reasoning
+    thinking_avatars = (AvatarType.MIND, AvatarType.BODY, AvatarType.EYE)
+    prefix = "ultrathink\n\n" if avatar in thinking_avatars else ""
 
     return f"""{prefix}## 1. TASK
 {task}

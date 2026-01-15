@@ -28,6 +28,10 @@
 │      → 检查 Skill 工具的 Available skills │
 │      → 匹配 → 调用 Skill 工具，完成！     │
 │                                         │
+│  Q0.5 [NEW] 调用 Scheduler 分析          │
+│      → 执行下方 Scheduler 集成流程        │
+│      → 获取轨道和执行计划                 │
+│                                         │
 │  Q1. 这是探索/研究/调研任务吗？           │
 │      → 是 → 召唤眼分身 (后台)            │
 │                                         │
@@ -42,6 +46,50 @@
 │                                         │
 │  全部 NO → 本体可直接执行                │
 └─────────────────────────────────────────┘
+```
+
+### Scheduler 集成 (Q0.5 详解)
+
+> **自动化轨道检测** - 用 Python Scheduler 分析任务，生成执行计划
+
+**何时调用**:
+- 非简单任务 (Direct Track 除外)
+- 涉及多分身协作的任务
+- 用户没有用 `@` 显式指定分身
+
+**调用方式**:
+```bash
+# 分析任务，获取轨道和执行计划
+python3 ~/.wukong/scheduler/cli.py analyze "用户任务描述"
+```
+
+**输出示例**:
+```
+## Scheduler Analysis Result
+
+### Task Info
+- **Description**: Add user authentication
+- **Track**: FEATURE
+
+### Execution Plan
+| Phase | Avatar | Model | Background | Cost |
+|-------|--------|-------|------------|------|
+| 1 | 耳 + 眼 | haiku | 可选/必须 | cheap |
+| 2 | 意 | opus | 禁止 | expensive |
+| 3 | 身 | opus | 禁止 | expensive |
+| 4 | 舌 + 鼻 | sonnet/haiku | 可选/必须 | medium/cheap |
+```
+
+**根据分析结果执行**:
+1. 用 `TodoWrite` 创建任务列表 (从 Scheduler 输出)
+2. 按 Phase 顺序召唤分身
+3. 同一 Phase 的分身可并行召唤
+4. 遵循 Background/Cost 配置
+
+**快捷 JSON 模式** (程序化使用):
+```bash
+python3 ~/.wukong/scheduler/cli.py json "任务描述"
+# 返回完整 JSON，包含 phases 和 todos
 ```
 
 ### Skill 工具匹配 (Q0 详解)
@@ -206,14 +254,24 @@ T2 时机 (方案冻结后):
 
 ## Track Selection (轨道选择)
 
-> 无 `@` 指定时，自动选择轨道
+> 无 `@` 指定时，**调用 Scheduler** 自动选择轨道
 
-| Track | Trigger | Flow |
-|-------|---------|------|
-| **Feature** | Add/Create/New | 耳→意→斗战胜佛→舌→鼻 |
-| **Fix** | Fix/Bug/Error | 眼→斗战胜佛→舌 |
-| **Refactor** | Refactor/Clean | 眼→意→斗战胜佛→舌 |
+**自动轨道检测** (由 Scheduler 执行):
+```bash
+python3 ~/.wukong/scheduler/cli.py analyze "任务描述"
+```
+
+| Track | Trigger Keywords | DAG Flow |
+|-------|------------------|----------|
+| **Feature** | add, create, new, implement, 功能 | [耳+眼] → [意] → [身] → [舌+鼻] |
+| **Fix** | fix, bug, error, crash, issue, 修复 | [眼+鼻] → [身] → [舌] |
+| **Refactor** | refactor, clean, optimize, 重构 | [眼] → [意] → [身] → [鼻+舌] |
 | **Direct** | 简单任务 | 直接执行 |
+
+**DAG 说明**:
+- `[A+B]` = 同一 Phase，可并行
+- `→` = Phase 依赖，必须串行
+- 详见 `~/.wukong/scheduler/scheduler.py` 中的 `TRACK_DAG`
 
 ## Summoning (召唤分身) - 4 部分声明协议
 
@@ -311,16 +369,36 @@ Task(prompt=f"""
 
 ### 分身上下文传递原则
 
-> **只传必要信息，不传完整历史**
+> **只传必要信息，不传完整历史** - 使用 Snapshot 机制
 
-**传递给分身的上下文：**
+**使用 Snapshot CLI 生成上下文注入:**
+```bash
+# 生成不可变快照，用于注入到 Task prompt
+python3 ~/.wukong/context/cli.py inject \
+  --context="缩形态上下文 (<500字)" \
+  --task="task_id" \
+  --anchors='[{"type":"D","content":"决策内容"},{"type":"C","content":"约束内容"}]'
+```
+
+**锚点类型 (PCMDI):**
+| 类型 | 含义 | 示例 |
+|------|------|------|
+| P | Problem (问题) | "用户登录失败" |
+| C | Constraint (约束) | "必须兼容 Python 3.8" |
+| M | Mode (模式) | "使用工厂模式" |
+| D | Decision (决策) | "选择 Redis 作为缓存" |
+| I | Interface (接口) | "API 返回 JSON 格式" |
+
+**传递给分身的上下文 (通过 Snapshot):**
 ```python
-Task(prompt=f"""
-## 🔸 缩形态上下文
-{compact_context}  # <500 字
+# 1. 生成快照
+snapshot_output = Bash("python3 ~/.wukong/context/cli.py inject --context='...' --anchors='[...]'")
 
-## 相关锚点
-{relevant_anchors}  # 只传相关的
+# 2. 注入到 Task prompt
+Task(prompt=f"""
+{skill}
+
+{snapshot_output}  # 快照注入
 
 ## 你的任务
 {task_description}
@@ -442,3 +520,24 @@ Task(prompt=f"""
 - `~/.claude/skills/shi.md` - 识：信息存储
 - `~/.claude/skills/jindouyun.md` - 筋斗云：并行执行协议
 - `~/.claude/skills/orchestration.md` - 轨道编排详细模式
+
+**Scheduler 模块**：
+- `~/.wukong/scheduler/scheduler.py` - 核心调度逻辑
+- `~/.wukong/scheduler/cli.py` - 命令行接口
+- `~/.wukong/scheduler/todo_integration.py` - TodoWrite 集成
+- `/schedule` 命令 - 独立调度分析 (`~/.claude/commands/schedule.md`)
+
+**Context 模块** (Snapshot + Aggregator)：
+- `~/.wukong/context/snapshot.py` - 不可变快照机制
+- `~/.wukong/context/importance.py` - 重要性标注系统 (HIGH/MEDIUM/LOW)
+- `~/.wukong/context/aggregator.py` - 结果自动聚合
+- `~/.wukong/context/cli.py` - 命令行接口
+
+**Context CLI 命令**：
+```bash
+# 生成快照注入
+python3 ~/.wukong/context/cli.py inject --context="..." --anchors='[...]'
+
+# 聚合后台分身结果
+python3 ~/.wukong/context/cli.py aggregate summary --compact
+```

@@ -112,24 +112,36 @@ if [ -d "$SOURCE_DIR/context/templates" ]; then
     echo -e "  ${GREEN}[ok]${NC} Context templates"
 fi
 
-# 复制调度器模块 (项目级)
+# 复制调度器模块 (排除测试文件)
 if [ -d "$SOURCE_DIR/scheduler" ]; then
     mkdir -p "$WUKONG_DIR/scheduler"
-    cp "$SOURCE_DIR"/scheduler/*.py "$WUKONG_DIR/scheduler/"
-    SCHED_COUNT=$(ls -1 "$SOURCE_DIR"/scheduler/*.py 2>/dev/null | wc -l | tr -d ' ')
+    # 排除 test_*.py 和 example_*.py
+    find "$SOURCE_DIR/scheduler" -maxdepth 1 -name "*.py" ! -name "test_*.py" ! -name "example_*.py" -exec cp {} "$WUKONG_DIR/scheduler/" \;
+    SCHED_COUNT=$(find "$SOURCE_DIR/scheduler" -maxdepth 1 -name "*.py" ! -name "test_*.py" ! -name "example_*.py" | wc -l | tr -d ' ')
     echo -e "  ${GREEN}[ok]${NC} Scheduler ($SCHED_COUNT files) → project"
 
     # 同时安装到全局 ~/.wukong/scheduler/ (用户级，优先发现)
     mkdir -p "$GLOBAL_WUKONG_DIR/scheduler"
-    cp "$SOURCE_DIR"/scheduler/*.py "$GLOBAL_WUKONG_DIR/scheduler/"
+    find "$SOURCE_DIR/scheduler" -maxdepth 1 -name "*.py" ! -name "test_*.py" ! -name "example_*.py" -exec cp {} "$GLOBAL_WUKONG_DIR/scheduler/" \;
     echo -e "  ${GREEN}[ok]${NC} Scheduler ($SCHED_COUNT files) → global"
 fi
 
-# 复制上下文优化模块
+# 复制上下文优化模块 (排除测试和示例文件)
 if [ -d "$SOURCE_DIR/context" ] && ls "$SOURCE_DIR"/context/*.py 1>/dev/null 2>&1; then
-    cp "$SOURCE_DIR"/context/*.py "$WUKONG_DIR/context/"
-    CTX_COUNT=$(ls -1 "$SOURCE_DIR"/context/*.py 2>/dev/null | wc -l | tr -d ' ')
-    echo -e "  ${GREEN}[ok]${NC} Context modules ($CTX_COUNT files)"
+    # 排除 test_*.py, example_*.py, *_example.py
+    find "$SOURCE_DIR/context" -maxdepth 1 -name "*.py" \
+        ! -name "test_*.py" ! -name "example_*.py" ! -name "*_usage.py" \
+        -exec cp {} "$WUKONG_DIR/context/" \;
+    CTX_COUNT=$(find "$SOURCE_DIR/context" -maxdepth 1 -name "*.py" \
+        ! -name "test_*.py" ! -name "example_*.py" ! -name "*_usage.py" | wc -l | tr -d ' ')
+    echo -e "  ${GREEN}[ok]${NC} Context modules ($CTX_COUNT files) → project"
+
+    # 同时安装到全局 ~/.wukong/context/ (用户级)
+    mkdir -p "$GLOBAL_WUKONG_DIR/context"
+    find "$SOURCE_DIR/context" -maxdepth 1 -name "*.py" \
+        ! -name "test_*.py" ! -name "example_*.py" ! -name "*_usage.py" \
+        -exec cp {} "$GLOBAL_WUKONG_DIR/context/" \;
+    echo -e "  ${GREEN}[ok]${NC} Context modules ($CTX_COUNT files) → global"
 fi
 
 # 初始化锚点文件
@@ -170,10 +182,11 @@ if [ -d "$SOURCE_DIR/commands" ] && ls "$SOURCE_DIR"/commands/*.md 1>/dev/null 2
     echo -e "  ${GREEN}[ok]${NC} Commands → ~/.claude/commands/ ($GCMD_COUNT files)"
 fi
 
-# 复制 hook 脚本
+# 复制 hook 脚本 (排除测试文件)
 if [ -d "$SOURCE_DIR/hooks" ] && ls "$SOURCE_DIR"/hooks/*.py 1>/dev/null 2>&1; then
-    cp "$SOURCE_DIR"/hooks/*.py "$GLOBAL_HOOKS_DIR/"
-    HOOK_COUNT=$(ls -1 "$SOURCE_DIR"/hooks/*.py 2>/dev/null | wc -l | tr -d ' ')
+    # 排除 test_*.py, test-*.py 和 example_*.py
+    find "$SOURCE_DIR/hooks" -maxdepth 1 -name "*.py" ! -name "test_*.py" ! -name "test-*.py" ! -name "example_*.py" -exec cp {} "$GLOBAL_HOOKS_DIR/" \;
+    HOOK_COUNT=$(find "$SOURCE_DIR/hooks" -maxdepth 1 -name "*.py" ! -name "test_*.py" ! -name "test-*.py" ! -name "example_*.py" | wc -l | tr -d ' ')
     echo -e "  ${GREEN}[ok]${NC} Hooks → ~/.wukong/hooks/ ($HOOK_COUNT files)"
 else
     echo -e "  ${YELLOW}[skip]${NC} No hook scripts found"
