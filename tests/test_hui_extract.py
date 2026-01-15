@@ -21,7 +21,10 @@ import sys
 from pathlib import Path
 
 # 添加 hooks 目录到路径 (支持 hui_extract 和 hui-extract 两种命名)
-hooks_dir = Path(__file__).parent
+# 测试文件现在在 tests/ 目录，hui-extract.py 在 wukong-dist/hooks/
+tests_dir = Path(__file__).parent
+project_root = tests_dir.parent
+hooks_dir = project_root / 'wukong-dist' / 'hooks'
 sys.path.insert(0, str(hooks_dir))
 
 # 动态导入 (处理文件名中的连字符)

@@ -27,11 +27,10 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest
 
       - name: Run tests
         run: |
-          python -m pytest tests/ -v
+          python tests/run_tests.py -v
 
   lint-shell:
     name: Lint Shell Scripts
@@ -75,6 +74,19 @@ jobs:
           # Check core rule exists
           test -f test-install/.claude/rules/00-wukong-core.md || exit 1
 
+          # Check scheduler module installed (project level)
+          test -d test-install/.wukong/scheduler || exit 1
+          test -f test-install/.wukong/scheduler/scheduler.py || exit 1
+
+          # Check context module installed (project level)
+          test -d test-install/.wukong/context || exit 1
+          test -f test-install/.wukong/context/snapshot.py || exit 1
+
+          # Check global installation
+          test -d ~/.wukong/scheduler || exit 1
+          test -d ~/.wukong/context || exit 1
+          test -d ~/.wukong/hooks || exit 1
+
           echo "Installation verification passed!"
 
   install-test-windows:
@@ -104,5 +116,18 @@ jobs:
 
           # Check core rule exists
           if (-not (Test-Path "test-install\.claude\rules\00-wukong-core.md")) { exit 1 }
+
+          # Check scheduler module installed (project level)
+          if (-not (Test-Path "test-install\.wukong\scheduler")) { exit 1 }
+          if (-not (Test-Path "test-install\.wukong\scheduler\scheduler.py")) { exit 1 }
+
+          # Check context module installed (project level)
+          if (-not (Test-Path "test-install\.wukong\context")) { exit 1 }
+          if (-not (Test-Path "test-install\.wukong\context\snapshot.py")) { exit 1 }
+
+          # Check global installation
+          if (-not (Test-Path "$env:USERPROFILE\.wukong\scheduler")) { exit 1 }
+          if (-not (Test-Path "$env:USERPROFILE\.wukong\context")) { exit 1 }
+          if (-not (Test-Path "$env:USERPROFILE\.wukong\hooks")) { exit 1 }
 
           Write-Host "Installation verification passed!"

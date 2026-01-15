@@ -6,8 +6,8 @@
 """
 import os
 import re
+import unittest
 from pathlib import Path
-import pytest
 
 # 项目根目录
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -23,6 +23,7 @@ PATH_MAPPING = {
     "~/.wukong/hooks/": SOURCE_DIR / "hooks",
     "~/.wukong/context/": SOURCE_DIR / "context",
     "~/.wukong/templates/": SOURCE_DIR / "templates",
+    "~/.wukong/scheduler/": SOURCE_DIR / "scheduler",
     # 相对路径引用
     ".claude/skills/": SOURCE_DIR / "skills",
     ".claude/rules/": SOURCE_DIR / "rules",
@@ -55,7 +56,7 @@ def should_ignore_path(path_ref: str) -> bool:
     return False
 
 
-def find_md_files() -> list[Path]:
+def find_md_files() -> list:
     """查找所有需要检查的 Markdown 文件"""
     md_files = []
     for md_file in PROJECT_ROOT.glob("**/*.md"):
@@ -66,7 +67,7 @@ def find_md_files() -> list[Path]:
     return md_files
 
 
-def extract_path_references(content: str) -> list[tuple[str, int]]:
+def extract_path_references(content: str) -> list:
     """
     提取文件中的路径引用
     返回: [(路径, 行号), ...]
@@ -94,7 +95,7 @@ def extract_path_references(content: str) -> list[tuple[str, int]]:
     return refs
 
 
-def resolve_path(ref: str) -> Path | None:
+def resolve_path(ref: str):
     """
     解析引用路径到源文件路径
     返回 None 表示路径不在映射范围内
@@ -117,90 +118,97 @@ def check_file_exists(resolved_path: Path) -> bool:
     return False
 
 
-# 收集所有需要测试的文件
-MD_FILES = find_md_files()
+class TestPathReferences(unittest.TestCase):
+    """路径引用测试"""
 
+    @classmethod
+    def setUpClass(cls):
+        cls.md_files = find_md_files()
 
-@pytest.mark.parametrize("md_file", MD_FILES, ids=lambda f: f.name)
-def test_path_references_exist(md_file: Path):
-    """验证 Markdown 文件中的路径引用对应的源文件存在"""
-    content = md_file.read_text(encoding='utf-8')
-    refs = extract_path_references(content)
+    def test_path_references_exist(self):
+        """验证 Markdown 文件中的路径引用对应的源文件存在"""
+        all_missing = []
 
-    missing = []
-    for ref, line_num in refs:
-        resolved = resolve_path(ref)
-        if resolved and not check_file_exists(resolved):
-            missing.append(f"  Line {line_num}: {ref} -> {resolved}")
+        for md_file in self.md_files:
+            content = md_file.read_text(encoding='utf-8')
+            refs = extract_path_references(content)
 
-    if missing:
-        pytest.fail(
-            f"Missing files referenced in {md_file.relative_to(PROJECT_ROOT)}:\n"
-            + "\n".join(missing)
-        )
-
-
-def test_no_wrong_skills_path():
-    """
-    确保没有使用错误的 ~/.wukong/skills/ 路径
-    正确路径应该是 ~/.claude/skills/
-
-    例外: CLAUDE.md 中的 "Common Pitfalls" 部分故意展示错误路径作为警示
-    """
-    wrong_pattern = r'~/.wukong/skills/'
-    violations = []
-
-    # 允许的例外 (故意展示错误路径的文件)
-    # 这些文件中提到 ~/.wukong/skills/ 是为了文档目的 (历史记录、迁移指南、警告等)
-    allowed_exceptions = {
-        "CLAUDE.md": [
-            "| `~/.wukong/skills/`",  # 表格中的错误示例
-            "Wrong paths like `~/.wukong/skills/`",  # What tests catch 部分
-        ],
-        "CHANGELOG.md": [
-            "from `~/.wukong/skills/`",  # 记录历史修复
-            "mv ~/.wukong/skills/",  # 迁移指南命令
-            "Skills path changed from `~/.wukong/skills/`",  # 迁移说明
-        ],
-        "CONTRIBUTING.md": [
-            "wrong paths like `~/.wukong/skills/`",  # 说明测试覆盖内容
-            "Never use `~/.wukong/skills/`",  # 路径约定警告
-        ],
-    }
-
-    for md_file in MD_FILES:
-        content = md_file.read_text(encoding='utf-8')
-        lines = content.split('\n')
-        file_name = md_file.name
-
-        for line_num, line in enumerate(lines, 1):
-            if re.search(wrong_pattern, line):
-                # 检查是否在允许的例外列表中
-                if file_name in allowed_exceptions:
-                    is_exception = any(
-                        exc in line for exc in allowed_exceptions[file_name]
+            for ref, line_num in refs:
+                resolved = resolve_path(ref)
+                if resolved and not check_file_exists(resolved):
+                    all_missing.append(
+                        f"  {md_file.relative_to(PROJECT_ROOT)}:{line_num}: "
+                        f"{ref} -> {resolved}"
                     )
-                    if is_exception:
-                        continue
 
-                violations.append(
-                    f"{md_file.relative_to(PROJECT_ROOT)}:{line_num}: "
-                    f"使用了错误路径 ~/.wukong/skills/ (应该是 ~/.claude/skills/)"
+        if all_missing:
+            self.fail(
+                f"Missing files referenced in markdown files:\n"
+                + "\n".join(all_missing)
+            )
+
+    def test_no_wrong_skills_path(self):
+        """
+        确保没有使用错误的 ~/.wukong/skills/ 路径
+        正确路径应该是 ~/.claude/skills/
+
+        例外: CLAUDE.md 中的 "Common Pitfalls" 部分故意展示错误路径作为警示
+        """
+        wrong_pattern = r'~/.wukong/skills/'
+        violations = []
+
+        # 允许的例外 (故意展示错误路径的文件)
+        allowed_exceptions = {
+            "CLAUDE.md": [
+                "| `~/.wukong/skills/`",  # 表格中的错误示例
+                "Wrong paths like `~/.wukong/skills/`",  # What tests catch 部分
+            ],
+            "CHANGELOG.md": [
+                "from `~/.wukong/skills/`",  # 记录历史修复
+                "mv ~/.wukong/skills/",  # 迁移指南命令
+                "Skills path changed from `~/.wukong/skills/`",  # 迁移说明
+            ],
+            "CONTRIBUTING.md": [
+                "wrong paths like `~/.wukong/skills/`",  # 说明测试覆盖内容
+                "Never use `~/.wukong/skills/`",  # 路径约定警告
+            ],
+        }
+
+        for md_file in self.md_files:
+            content = md_file.read_text(encoding='utf-8')
+            lines = content.split('\n')
+            file_name = md_file.name
+
+            for line_num, line in enumerate(lines, 1):
+                if re.search(wrong_pattern, line):
+                    # 检查是否在允许的例外列表中
+                    if file_name in allowed_exceptions:
+                        is_exception = any(
+                            exc in line for exc in allowed_exceptions[file_name]
+                        )
+                        if is_exception:
+                            continue
+
+                    violations.append(
+                        f"{md_file.relative_to(PROJECT_ROOT)}:{line_num}: "
+                        f"使用了错误路径 ~/.wukong/skills/ (应该是 ~/.claude/skills/)"
+                    )
+
+        if violations:
+            self.fail(
+                "发现错误的 skills 路径引用:\n" + "\n".join(violations)
+            )
+
+    def test_path_mapping_consistency(self):
+        """验证路径映射目录都存在"""
+        for prefix, source_dir in PATH_MAPPING.items():
+            if "skills" in prefix or "rules" in prefix or "commands" in prefix:
+                # 这些是核心目录，必须存在
+                self.assertTrue(
+                    source_dir.exists(),
+                    f"源目录不存在: {source_dir} (映射自 {prefix})"
                 )
-
-    if violations:
-        pytest.fail(
-            "发现错误的 skills 路径引用:\n" + "\n".join(violations)
-        )
-
-
-def test_path_mapping_consistency():
-    """验证路径映射目录都存在"""
-    for prefix, source_dir in PATH_MAPPING.items():
-        if "skills" in prefix or "rules" in prefix or "commands" in prefix:
-            # 这些是核心目录，必须存在
-            assert source_dir.exists(), f"源目录不存在: {source_dir} (映射自 {prefix})"
 
 
 if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+    unittest.main()

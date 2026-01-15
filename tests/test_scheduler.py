@@ -15,9 +15,13 @@ import unittest
 import sys
 import os
 from datetime import datetime
+from pathlib import Path
 
-# 添加当前目录到路径
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# 添加 scheduler 目录到路径 (测试文件现在在 tests/ 目录)
+tests_dir = Path(__file__).parent
+project_root = tests_dir.parent
+scheduler_dir = project_root / 'wukong-dist' / 'scheduler'
+sys.path.insert(0, str(scheduler_dir))
 
 from scheduler import (
     WukongScheduler,
@@ -390,7 +394,7 @@ class TestTodoIntegration(unittest.TestCase):
 
         invocation = generate_task_invocation(task)
         self.assertIn("Task(", invocation)
-        self.assertIn("haiku", invocation)
+        self.assertIn("sonnet", invocation)  # EYE avatar now uses sonnet
         self.assertIn("run_in_background=True", invocation)  # 眼分身必须后台
 
 
@@ -401,7 +405,7 @@ class TestExecutionMode(unittest.TestCase):
         scheduler = WukongScheduler()
         mode = scheduler.get_execution_mode(AvatarType.EYE)
 
-        self.assertEqual(mode["model"], "haiku")
+        self.assertEqual(mode["model"], "sonnet")  # EYE avatar now uses sonnet
         self.assertTrue(mode["run_in_background"])
         self.assertTrue(mode["background_required"])
         self.assertFalse(mode["background_forbidden"])
@@ -438,7 +442,7 @@ class TestTaskPromptGeneration(unittest.TestCase):
         self.assertIn("探索代码库", prompt)
         self.assertIn("## 5. MUST DO", prompt)
         self.assertIn("扫描所有 .py 文件", prompt)
-        self.assertIn("model=haiku", prompt)
+        self.assertIn("model=sonnet", prompt)  # EYE avatar now uses sonnet
 
     def test_generate_mind_avatar_prompt(self):
         prompt = generate_task_prompt(
