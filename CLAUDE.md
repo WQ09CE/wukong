@@ -88,6 +88,24 @@ After modifying rules or skills:
 2. **Verify paths**: `ls ~/.claude/skills/` to confirm files exist
 3. **Check syntax**: Ensure markdown renders correctly
 
+### Automated Tests
+
+```bash
+# Run path reference validation (catches wrong path errors)
+python -m pytest tests/test_path_references.py -v
+
+# Run installation test
+./tests/test_install.sh
+
+# Run all tests
+python -m pytest tests/ -v
+```
+
+**What tests catch:**
+- Wrong paths like `~/.wukong/skills/` (should be `~/.claude/skills/`)
+- References to non-existent files
+- Installation script failures
+
 ## Version Control
 
 - **Always commit to repo** (wukong-dist/)
