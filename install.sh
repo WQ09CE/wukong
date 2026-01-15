@@ -14,6 +14,7 @@ echo ""
 
 PROJECT_ROOT=$(pwd)
 SOURCE_DIR=""
+GLOBAL_WUKONG_DIR="$HOME/.wukong"
 
 # ============================================================
 # 1. 确定源目录
@@ -104,19 +105,24 @@ if [ -d "$SOURCE_DIR/templates" ]; then
     echo -e "  ${GREEN}[ok]${NC} Templates"
 fi
 
-# 复制上下文模板
+# 复制上下文模板 (跳过相同文件)
 if [ -d "$SOURCE_DIR/context/templates" ]; then
     mkdir -p "$WUKONG_DIR/context/templates"
-    cp -R "$SOURCE_DIR"/context/templates/. "$WUKONG_DIR/context/templates/"
+    cp -R "$SOURCE_DIR"/context/templates/. "$WUKONG_DIR/context/templates/" 2>/dev/null || true
     echo -e "  ${GREEN}[ok]${NC} Context templates"
 fi
 
-# 复制调度器模块
+# 复制调度器模块 (项目级)
 if [ -d "$SOURCE_DIR/scheduler" ]; then
     mkdir -p "$WUKONG_DIR/scheduler"
     cp "$SOURCE_DIR"/scheduler/*.py "$WUKONG_DIR/scheduler/"
     SCHED_COUNT=$(ls -1 "$SOURCE_DIR"/scheduler/*.py 2>/dev/null | wc -l | tr -d ' ')
-    echo -e "  ${GREEN}[ok]${NC} Scheduler ($SCHED_COUNT files)"
+    echo -e "  ${GREEN}[ok]${NC} Scheduler ($SCHED_COUNT files) → project"
+
+    # 同时安装到全局 ~/.wukong/scheduler/ (用户级，优先发现)
+    mkdir -p "$GLOBAL_WUKONG_DIR/scheduler"
+    cp "$SOURCE_DIR"/scheduler/*.py "$GLOBAL_WUKONG_DIR/scheduler/"
+    echo -e "  ${GREEN}[ok]${NC} Scheduler ($SCHED_COUNT files) → global"
 fi
 
 # 复制上下文优化模块

@@ -5,6 +5,16 @@ All notable changes to Wukong will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.3] - 2026-01-15
+
+### Changed
+- Scheduler now installs to **user-level** `~/.wukong/scheduler/` (global)
+- `/schedule` command discovery: user-level (`~/.wukong/`) takes priority over project-level (`.wukong/`)
+- Added `wukong-dist/commands/` directory for command source files
+
+### Fixed
+- Fixed install.sh to handle identical file copy errors gracefully
+
 ## [1.7.2] - 2026-01-15
 
 ### Added
