@@ -35,9 +35,20 @@ def load_hui_module():
     """动态加载 hui-extract 模块"""
     # hui-extract.py is in wukong-dist/hooks/ directory
     hui_path = Path(__file__).parent.parent / 'wukong-dist' / 'hooks' / 'hui-extract.py'
-    spec = spec_from_file_location("hui_extract", hui_path)
-    hui = module_from_spec(spec)
-    spec.loader.exec_module(hui)
+
+    if not hui_path.exists():
+        raise FileNotFoundError(f"hui-extract.py not found at: {hui_path}")
+
+    # Read and compile the module source with explicit UTF-8 encoding
+    # This avoids Windows encoding issues
+    with open(hui_path, 'r', encoding='utf-8') as f:
+        source = f.read()
+
+    # Create a module and execute the source
+    import types
+    hui = types.ModuleType("hui_extract")
+    hui.__file__ = str(hui_path)
+    exec(compile(source, str(hui_path), 'exec'), hui.__dict__)
     return hui
 
 
