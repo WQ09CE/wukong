@@ -176,6 +176,7 @@ Task(
 | `/wukong 存档` | 保存完整上下文 | 写入 `.wukong/context/sessions/` |
 | `/wukong 加载 {name}` | 加载历史上下文 | 从存档恢复会话 |
 | `/wukong 锚点` | 显示所有锚点 | 查看关键决策/约束/接口 |
+| `/wukong 自检` | 环境自检 | 验证 Wukong 安装和配置 |
 
 **三态形态：**
 - 🔶 **巨形态** - 完整详细信息
@@ -220,3 +221,122 @@ If no specific task was provided, respond:
 
 **显式指定分身:** `/wukong @意 设计xxx` 或 `/wukong @眼 探索xxx`
 **自动轨道选择:** `/wukong 添加用户登录功能`"
+
+---
+
+## Self-Check Command (自检命令)
+
+When user invokes `/wukong 自检`, execute environment validation:
+
+```bash
+# Execute this check directly in Claude using Bash tool:
+
+echo "═══════════════════════════════════════════════════"
+echo " Wukong Self-Check (悟空自检)"
+echo "═══════════════════════════════════════════════════"
+echo ""
+
+# 1. Check skill files
+echo "1. Checking ~/.claude/skills/..."
+SKILL_COUNT=$(ls ~/.claude/skills/*.md 2>/dev/null | wc -l)
+if [ "$SKILL_COUNT" -gt 0 ]; then
+    echo "   ✓ Found $SKILL_COUNT skill files"
+else
+    echo "   ✗ No skill files found"
+fi
+
+# 2. Check rule files
+echo ""
+echo "2. Checking ~/.claude/rules/..."
+RULE_COUNT=$(ls ~/.claude/rules/*.md 2>/dev/null | wc -l)
+if [ "$RULE_COUNT" -gt 0 ]; then
+    echo "   ✓ Found $RULE_COUNT rule files"
+else
+    echo "   ✗ No rule files found"
+fi
+
+# 3. Check scheduler module
+echo ""
+echo "3. Checking ~/.wukong/scheduler/..."
+if [ -f ~/.wukong/scheduler/scheduler.py ]; then
+    echo "   ✓ scheduler.py exists"
+else
+    echo "   ✗ scheduler.py missing"
+fi
+
+# 4. Check context module
+echo ""
+echo "4. Checking ~/.wukong/context/..."
+if [ -f ~/.wukong/context/snapshot.py ]; then
+    echo "   ✓ snapshot.py exists"
+else
+    echo "   ✗ snapshot.py missing"
+fi
+
+# 5. Check hooks
+echo ""
+echo "5. Checking ~/.wukong/hooks/..."
+if [ -f ~/.wukong/hooks/hui-extract.py ]; then
+    echo "   ✓ hui-extract.py exists"
+else
+    echo "   ✗ hui-extract.py missing"
+fi
+
+# 6. Test scheduler import
+echo ""
+echo "6. Testing scheduler functionality..."
+python3 << 'PYTHON_SCRIPT'
+import sys
+import os
+sys.path.insert(0, os.path.expanduser('~/.wukong/scheduler'))
+from scheduler import WukongScheduler, TrackType
+s = WukongScheduler()
+tests = [
+    ('Add login feature', TrackType.FEATURE),
+    ('Fix the bug', TrackType.FIX),
+    ('Refactor auth', TrackType.REFACTOR),
+]
+all_pass = True
+for task, expected in tests:
+    result = s.detect_track(task)
+    if result != expected:
+        all_pass = False
+        print(f'   ✗ Track detection failed: {task}')
+if all_pass:
+    print('   ✓ Track detection OK (FEATURE/FIX/REFACTOR)')
+PYTHON_SCRIPT
+
+echo ""
+echo "═══════════════════════════════════════════════════"
+echo " Self-Check Complete"
+echo "═══════════════════════════════════════════════════"
+```
+
+**Expected Output:**
+```
+═══════════════════════════════════════════════════
+ Wukong Self-Check (悟空自检)
+═══════════════════════════════════════════════════
+
+1. Checking ~/.claude/skills/...
+   ✓ Found 13 skill files
+
+2. Checking ~/.claude/rules/...
+   ✓ Found 1 rule files
+
+3. Checking ~/.wukong/scheduler/...
+   ✓ scheduler.py exists
+
+4. Checking ~/.wukong/context/...
+   ✓ snapshot.py exists
+
+5. Checking ~/.wukong/hooks/...
+   ✓ hui-extract.py exists
+
+6. Testing scheduler functionality...
+   ✓ Track detection OK (FEATURE/FIX/REFACTOR)
+
+═══════════════════════════════════════════════════
+ Self-Check Complete
+═══════════════════════════════════════════════════
+```

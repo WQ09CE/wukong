@@ -274,6 +274,60 @@ def run_e2e_tests(verbose: bool = False) -> tuple[int, int]:
     return passed, failed
 
 
+def run_hui_shi_tests(verbose: bool = False) -> tuple[int, int]:
+    """Run 慧/识 system integration tests"""
+    print_header("Hui/Shi Tests (慧/识系统测试)")
+
+    try:
+        import subprocess
+        import json
+
+        # Run test_hui_shi.py with project root as cwd
+        result = subprocess.run(
+            [sys.executable, str(TESTS_DIR / "test_hui_shi.py"), "--cwd", str(PROJECT_ROOT)],
+            capture_output=True,
+            text=True,
+            cwd=str(PROJECT_ROOT),
+            timeout=60
+        )
+
+        # Try to parse JSON result if available
+        json_file = PROJECT_ROOT / ".wukong" / "context" / "test-results"
+        json_files = list(json_file.glob("test-*.json")) if json_file.exists() else []
+
+        if json_files:
+            # Get the most recent result
+            latest = max(json_files, key=lambda p: p.stat().st_mtime)
+            with open(latest, 'r', encoding='utf-8') as f:
+                test_result = json.load(f)
+
+            summary = test_result.get('summary', {})
+            passed = summary.get('passed', 0)
+            failed = summary.get('failed', 0)
+
+            if failed == 0:
+                print_result(f"慧/识系统 ({passed} tests)", True)
+            else:
+                print_result(f"慧/识系统 ({passed}/{passed+failed} passed)", False)
+
+            return 1 if failed == 0 else 0, 1 if failed > 0 else 0
+        else:
+            # Fallback: check return code
+            if result.returncode == 0:
+                print_result("慧/识系统", True)
+                return 1, 0
+            else:
+                print_result("慧/识系统", False, result.stderr[:100] if result.stderr else "Unknown error")
+                return 0, 1
+
+    except subprocess.TimeoutExpired:
+        print_result("慧/识系统", False, "Timeout after 60s")
+        return 0, 1
+    except Exception as e:
+        print_result("慧/识系统", False, str(e))
+        return 0, 1
+
+
 def run_path_reference_tests() -> tuple[int, int]:
     """Run path reference validation tests"""
     print_header("Path Reference Tests (路径引用测试)")
@@ -304,6 +358,7 @@ def main():
     parser.add_argument("--unit", action="store_true", help="Run unit tests only")
     parser.add_argument("--integration", action="store_true", help="Run integration tests only")
     parser.add_argument("--e2e", action="store_true", help="Run end-to-end tests only")
+    parser.add_argument("--hui-shi", action="store_true", help="Run 慧/识 system tests only")
     parser.add_argument("--path", action="store_true", help="Run path reference tests only")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     args = parser.parse_args()
@@ -319,7 +374,7 @@ def main():
     total_passed = 0
     total_failed = 0
 
-    run_all = not (args.unit or args.integration or args.e2e or args.path)
+    run_all = not (args.unit or args.integration or args.e2e or args.hui_shi or args.path)
 
     if run_all or args.unit:
         p, f = run_unit_tests(args.verbose)
@@ -333,6 +388,11 @@ def main():
 
     if run_all or args.e2e:
         p, f = run_e2e_tests(args.verbose)
+        total_passed += p
+        total_failed += f
+
+    if run_all or args.hui_shi:
+        p, f = run_hui_shi_tests(args.verbose)
         total_passed += p
         total_failed += f
 

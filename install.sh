@@ -30,7 +30,7 @@ else
     trap 'rm -rf "$TEMP_DIR"' EXIT
 
     echo "Fetching Wukong from GitHub..."
-    curl -fsSL "https://github.com/anthropics/wukong/archive/refs/heads/main.tar.gz" | tar -xz -C "$TEMP_DIR"
+    curl -fsSL "https://github.com/WQ09CE/wukong/archive/refs/heads/main.tar.gz" | tar -xz -C "$TEMP_DIR"
 
     # 尝试新版目录结构，回退到旧版
     if [ -d "$TEMP_DIR/wukong-main/wukong-dist" ]; then

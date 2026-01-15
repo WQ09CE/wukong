@@ -58,10 +58,10 @@ CLAUDE_FAIL=0
 for file in "${CLAUDE_FILES[@]}"; do
     if [[ -f "$TEST_DIR/$file" ]]; then
         echo -e "  ${GREEN}[ok]${NC} $file"
-        ((CLAUDE_PASS++))
+        ((++CLAUDE_PASS))
     else
         echo -e "  ${RED}[FAIL]${NC} $file"
-        ((CLAUDE_FAIL++))
+        ((++CLAUDE_FAIL))
     fi
 done
 
@@ -91,20 +91,20 @@ WUKONG_FAIL=0
 for file in "${WUKONG_FILES[@]}"; do
     if [[ -f "$TEST_DIR/$file" ]]; then
         echo -e "  ${GREEN}[ok]${NC} $file"
-        ((WUKONG_PASS++))
+        ((++WUKONG_PASS))
     else
         echo -e "  ${RED}[FAIL]${NC} $file"
-        ((WUKONG_FAIL++))
+        ((++WUKONG_FAIL))
     fi
 done
 
 for dir in "${WUKONG_DIRS[@]}"; do
     if [[ -d "$TEST_DIR/$dir" ]]; then
         echo -e "  ${GREEN}[ok]${NC} $dir/"
-        ((WUKONG_PASS++))
+        ((++WUKONG_PASS))
     else
         echo -e "  ${RED}[FAIL]${NC} $dir/"
-        ((WUKONG_FAIL++))
+        ((++WUKONG_FAIL))
     fi
 done
 
