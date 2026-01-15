@@ -130,12 +130,7 @@ python3 ~/.wukong/scheduler/cli.py analyze "用户任务描述"
 
 ## Track Selection (轨道选择)
 
-> 无 `@` 指定时，**调用 Scheduler** 自动选择轨道
-
-**自动轨道检测** (由 Scheduler 执行):
-```bash
-python3 ~/.wukong/scheduler/cli.py analyze "任务描述"
-```
+> 无 `@` 指定时，调用 Scheduler 自动选择轨道 (见上方 Q0.5)
 
 | Track | Trigger Keywords | DAG Flow |
 |-------|------------------|----------|
