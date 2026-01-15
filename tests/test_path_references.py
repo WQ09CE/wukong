@@ -151,9 +151,12 @@ def test_no_wrong_skills_path():
     violations = []
 
     # 允许的例外 (故意展示错误路径的文件)
-    # CLAUDE.md 的 "Common Pitfalls" 表格中展示错误示例
+    # CLAUDE.md 的 "Common Pitfalls" 表格和 "What tests catch" 部分展示错误示例
     allowed_exceptions = {
-        "CLAUDE.md": ["| `~/.wukong/skills/`"],  # 表格中的错误示例
+        "CLAUDE.md": [
+            "| `~/.wukong/skills/`",  # 表格中的错误示例
+            "Wrong paths like `~/.wukong/skills/`",  # What tests catch 部分
+        ],
     }
 
     for md_file in MD_FILES:

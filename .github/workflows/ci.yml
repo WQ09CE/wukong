@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.11']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+
+      - name: Run tests
+        run: |
+          python -m pytest tests/ -v
+
+  lint-shell:
+    name: Lint Shell Scripts
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Lint install.sh
+        run: shellcheck install.sh || true  # Warning only for now
+
+  install-test-unix:
+    name: Test Installation (Unix)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create test directory
+        run: mkdir -p test-install
+
+      - name: Run installation
+        run: |
+          cd test-install
+          bash ../install.sh . <<< "n"
+
+      - name: Verify installation
+        run: |
+          # Check core directories exist
+          test -d test-install/.claude/rules || exit 1
+          test -d test-install/.claude/skills || exit 1
+          test -d test-install/.claude/commands || exit 1
+          test -d test-install/.wukong || exit 1
+
+          # Check core rule exists
+          test -f test-install/.claude/rules/00-wukong-core.md || exit 1
+
+          echo "Installation verification passed!"
+
+  install-test-windows:
+    name: Test Installation (Windows)
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create test directory
+        run: mkdir test-install
+
+      - name: Run installation
+        shell: pwsh
+        run: |
+          cd test-install
+          # Run with default "no" for hook registration
+          echo "n" | pwsh -File ../install.ps1 -TargetDir .
+
+      - name: Verify installation
+        shell: pwsh
+        run: |
+          # Check core directories exist
+          if (-not (Test-Path "test-install\.claude\rules")) { exit 1 }
+          if (-not (Test-Path "test-install\.claude\skills")) { exit 1 }
+          if (-not (Test-Path "test-install\.claude\commands")) { exit 1 }
+          if (-not (Test-Path "test-install\.wukong")) { exit 1 }
+
+          # Check core rule exists
+          if (-not (Test-Path "test-install\.claude\rules\00-wukong-core.md")) { exit 1 }
+
+          Write-Host "Installation verification passed!"

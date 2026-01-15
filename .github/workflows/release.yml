@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for changelog
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          # Get the previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          if [ -n "$PREV_TAG" ]; then
+            echo "Generating changelog from $PREV_TAG to ${{ steps.version.outputs.VERSION }}"
+            CHANGELOG=$(git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          else
+            echo "No previous tag found, generating full changelog"
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges -20)
+          fi
+
+          # Write to file for multi-line output
+          echo "$CHANGELOG" > changelog.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Wukong ${{ steps.version.outputs.VERSION }}
+          body: |
+            ## Wukong ${{ steps.version.outputs.VERSION }}
+
+            ### Installation
+
+            **Quick Install (Mac/Linux):**
+            ```bash
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/install.sh | bash
+            ```
+
+            **Windows (PowerShell):**
+            ```powershell
+            iwr -useb https://raw.githubusercontent.com/${{ github.repository }}/main/install.ps1 | iex
+            ```
+
+            **Manual Install:**
+            Download the release assets and run `install.sh` or `install.ps1`
+
+            ### Changes
+
+            ${{ steps.changelog.outputs.CHANGELOG }}
+
+            See [README](https://github.com/${{ github.repository }}/blob/main/README.md) for full documentation.
+          files: |
+            install.sh
+            install.ps1
+            README.md
+            README-zh.md
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.VERSION, '-') }}
+          generate_release_notes: true
