@@ -111,6 +111,21 @@ if [ -d "$SOURCE_DIR/context/templates" ]; then
     echo -e "  ${GREEN}[ok]${NC} Context templates"
 fi
 
+# 复制调度器模块
+if [ -d "$SOURCE_DIR/scheduler" ]; then
+    mkdir -p "$WUKONG_DIR/scheduler"
+    cp "$SOURCE_DIR"/scheduler/*.py "$WUKONG_DIR/scheduler/"
+    SCHED_COUNT=$(ls -1 "$SOURCE_DIR"/scheduler/*.py 2>/dev/null | wc -l | tr -d ' ')
+    echo -e "  ${GREEN}[ok]${NC} Scheduler ($SCHED_COUNT files)"
+fi
+
+# 复制上下文优化模块
+if [ -d "$SOURCE_DIR/context" ] && ls "$SOURCE_DIR"/context/*.py 1>/dev/null 2>&1; then
+    cp "$SOURCE_DIR"/context/*.py "$WUKONG_DIR/context/"
+    CTX_COUNT=$(ls -1 "$SOURCE_DIR"/context/*.py 2>/dev/null | wc -l | tr -d ' ')
+    echo -e "  ${GREEN}[ok]${NC} Context modules ($CTX_COUNT files)"
+fi
+
 # 初始化锚点文件
 if [ ! -f "$WUKONG_DIR/context/anchors.md" ]; then
     cat > "$WUKONG_DIR/context/anchors.md" << 'EOF'

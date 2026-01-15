@@ -9,11 +9,8 @@ dist/
 build/
 
 # Wukong runtime data (用户特定，不应提交)
-# 旧版 (.wukong)
-.wukong/context/current/
-.wukong/context/sessions/
-.wukong/context/index.json
-.wukong/notepads/
+# .wukong 是安装后的工作目录，源码仓库不需要跟踪
+.wukong/
 
 # 新版 (wukong-dist)
 wukong-dist/context/current/
