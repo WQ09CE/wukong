@@ -121,7 +121,8 @@ $Directories = @(
     "$WukongDir\notepads",
     "$WukongDir\plans",
     "$WukongDir\context\current",
-    "$WukongDir\context\sessions"
+    "$WukongDir\context\sessions",
+    "$WukongDir\scheduler"
 )
 
 foreach ($Dir in $Directories) {
@@ -179,6 +180,34 @@ if (Test-Path $ContextTemplatesSource) {
     Write-Step "ok" "Context templates"
 }
 
+# Copy scheduler module (project level)
+$SchedulerSource = Join-Path $SourceDir "scheduler"
+if (Test-Path $SchedulerSource) {
+    $SchedulerDest = Join-Path $WukongDir "scheduler"
+    if (-not (Test-Path $SchedulerDest)) {
+        New-Item -ItemType Directory -Path $SchedulerDest -Force | Out-Null
+    }
+    $SchedulerFiles = Get-ChildItem "$SchedulerSource\*.py" -ErrorAction SilentlyContinue
+    if ($SchedulerFiles) {
+        Copy-Item "$SchedulerSource\*.py" -Destination $SchedulerDest -Force
+        Write-Step "ok" "Scheduler module ($($SchedulerFiles.Count) files)"
+    }
+}
+
+# Copy context Python files (project level)
+$ContextSource = Join-Path $SourceDir "context"
+if (Test-Path $ContextSource) {
+    $ContextDest = Join-Path $WukongDir "context"
+    if (-not (Test-Path $ContextDest)) {
+        New-Item -ItemType Directory -Path $ContextDest -Force | Out-Null
+    }
+    $ContextFiles = Get-ChildItem "$ContextSource\*.py" -ErrorAction SilentlyContinue
+    if ($ContextFiles) {
+        Copy-Item "$ContextSource\*.py" -Destination $ContextDest -Force
+        Write-Step "ok" "Context module ($($ContextFiles.Count) files)"
+    }
+}
+
 # Initialize anchors file
 $AnchorsFile = Join-Path $WukongDir "context\anchors.md"
 if (-not (Test-Path $AnchorsFile)) {
@@ -227,6 +256,34 @@ if (Test-Path $HooksSource) {
 }
 else {
     Write-Step "skip" "No hooks directory found" "Yellow"
+}
+
+# Copy scheduler module (global)
+$GlobalSchedulerDir = Join-Path $GlobalWukongDir "scheduler"
+if (-not (Test-Path $GlobalSchedulerDir)) {
+    New-Item -ItemType Directory -Path $GlobalSchedulerDir -Force | Out-Null
+}
+$SchedulerSource = Join-Path $SourceDir "scheduler"
+if (Test-Path $SchedulerSource) {
+    $SchedulerFiles = Get-ChildItem "$SchedulerSource\*.py" -ErrorAction SilentlyContinue
+    if ($SchedulerFiles) {
+        Copy-Item "$SchedulerSource\*.py" -Destination $GlobalSchedulerDir -Force
+        Write-Step "ok" "Installed scheduler to ~\.wukong\scheduler\ ($($SchedulerFiles.Count) files)"
+    }
+}
+
+# Copy context module (global)
+$GlobalContextDir = Join-Path $GlobalWukongDir "context"
+if (-not (Test-Path $GlobalContextDir)) {
+    New-Item -ItemType Directory -Path $GlobalContextDir -Force | Out-Null
+}
+$ContextSource = Join-Path $SourceDir "context"
+if (Test-Path $ContextSource) {
+    $ContextFiles = Get-ChildItem "$ContextSource\*.py" -ErrorAction SilentlyContinue
+    if ($ContextFiles) {
+        Copy-Item "$ContextSource\*.py" -Destination $GlobalContextDir -Force
+        Write-Step "ok" "Installed context to ~\.wukong\context\ ($($ContextFiles.Count) files)"
+    }
 }
 
 Write-Host ""
@@ -390,6 +447,10 @@ Write-Host "  $WukongDir\           " -NoNewline -ForegroundColor DarkGray
 Write-Host "Work data"
 Write-Host "  ~\.wukong\hooks\      " -NoNewline -ForegroundColor DarkGray
 Write-Host "Global hooks"
+Write-Host "  ~\.wukong\scheduler\  " -NoNewline -ForegroundColor DarkGray
+Write-Host "Scheduler module"
+Write-Host "  ~\.wukong\context\    " -NoNewline -ForegroundColor DarkGray
+Write-Host "Context module"
 Write-Host ""
 Write-Host "Start Claude Code and say: " -NoNewline
 Write-ColorOutput "/wukong" "Green"

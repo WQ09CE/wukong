@@ -24,8 +24,16 @@ import sys
 import os
 import unittest
 import argparse
+import io
 from pathlib import Path
 from datetime import datetime
+
+# Fix Unicode encoding for Windows (cp1252 doesn't support box-drawing chars)
+# This must be done before any print() calls with Unicode characters
+if sys.stdout and hasattr(sys.stdout, 'buffer'):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+if sys.stderr and hasattr(sys.stderr, 'buffer'):
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 # Setup paths
 TESTS_DIR = Path(__file__).parent
