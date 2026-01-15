@@ -61,8 +61,8 @@ jobs:
 
       - name: Run installation
         run: |
-          cd test-install
-          bash ../install.sh . <<< "n"
+          # Run from repo root so install.sh finds wukong-dist
+          bash install.sh test-install <<< "n"
 
       - name: Verify installation
         run: |
@@ -90,9 +90,8 @@ jobs:
       - name: Run installation
         shell: pwsh
         run: |
-          cd test-install
-          # Run with default "no" for hook registration
-          echo "n" | pwsh -File ../install.ps1 -TargetDir .
+          # Run from repo root so install.ps1 finds wukong-dist
+          echo "n" | pwsh -File install.ps1 -TargetDir test-install
 
       - name: Verify installation
         shell: pwsh
