@@ -325,11 +325,13 @@ def run_hui_shi_tests(verbose: bool = False) -> tuple[int, int]:
                 print_result("慧/识系统", True)
                 return 1, 0
             else:
-                # Show full traceback for debugging
+                # Show full error for debugging Windows issues
                 error_msg = result.stderr or result.stdout or "Unknown error"
-                # Truncate to first 500 chars for display, but show key parts
-                if len(error_msg) > 500:
-                    error_msg = error_msg[:500] + "..."
+                # Print full stderr for debugging in CI
+                if result.stderr:
+                    print(f"\n  Full stderr:\n{result.stderr}\n")
+                if result.stdout and not result.stderr:
+                    print(f"\n  Full stdout:\n{result.stdout}\n")
                 print_result("慧/识系统", False, error_msg.split('\n')[0] if error_msg else "Unknown error")
                 return 0, 1
 
