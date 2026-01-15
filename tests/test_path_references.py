@@ -151,11 +151,20 @@ def test_no_wrong_skills_path():
     violations = []
 
     # 允许的例外 (故意展示错误路径的文件)
-    # CLAUDE.md 的 "Common Pitfalls" 表格和 "What tests catch" 部分展示错误示例
+    # 这些文件中提到 ~/.wukong/skills/ 是为了文档目的 (历史记录、迁移指南、警告等)
     allowed_exceptions = {
         "CLAUDE.md": [
             "| `~/.wukong/skills/`",  # 表格中的错误示例
             "Wrong paths like `~/.wukong/skills/`",  # What tests catch 部分
+        ],
+        "CHANGELOG.md": [
+            "from `~/.wukong/skills/`",  # 记录历史修复
+            "mv ~/.wukong/skills/",  # 迁移指南命令
+            "Skills path changed from `~/.wukong/skills/`",  # 迁移说明
+        ],
+        "CONTRIBUTING.md": [
+            "wrong paths like `~/.wukong/skills/`",  # 说明测试覆盖内容
+            "Never use `~/.wukong/skills/`",  # 路径约定警告
         ],
     }
 
