@@ -46,8 +46,9 @@ project_skills = Glob(".claude/skills/*.md")
 
 # 2. 如果项目级为空，获取 home 目录并查全局 skills
 if not project_skills:
-    # 跨平台获取 home 目录
-    home = Bash("echo ~").stdout.strip()
+    # 真正跨平台获取 home 目录 (Windows/Mac/Linux)
+    import os
+    home = os.path.expanduser("~")
     global_skills = Glob(f"{home}/.claude/skills/*.md")
     skills = global_skills
 else:
@@ -56,7 +57,7 @@ else:
 
 **路径优先级：**
 1. `.claude/skills/` (项目级，可覆盖全局)
-2. `~/.claude/skills/` (全局级，通过 `echo ~` 获取 home)
+2. `~/.claude/skills/` (全局级，通过 `os.path.expanduser("~")` 跨平台获取)
 
 这样可以发现用户新增的任何技能文件，实现真正的**七十二变**。
 
@@ -131,8 +132,9 @@ def read_skill(skill_file):
     project_path = f".claude/skills/{skill_file}"
     if Glob(project_path):
         return Read(project_path)
-    # 回退到全局级
-    home = Bash("echo ~").stdout.strip()
+    # 回退到全局级 (真正跨平台: Windows/Mac/Linux)
+    import os
+    home = os.path.expanduser("~")
     return Read(f"{home}/.claude/skills/{skill_file}")
 
 skill_content = read_skill("{skill-file}.md")

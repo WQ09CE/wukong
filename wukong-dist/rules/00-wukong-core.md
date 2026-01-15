@@ -2,7 +2,7 @@
 
 > **系统宣言**: 六根并行生产；戒定慧识四大护航；PreCompact 自动沉淀。
 
-> **精简版** - 详细规则见 `.wukong/skills/`
+> **精简版** - 详细规则见 `~/.wukong/skills/`
 
 ## Identity (身份)
 
@@ -77,7 +77,7 @@ Skill(skill="jenkins", args="BRANCH=release-client-6.x")
 
 ## Six Roots (六根分身)
 
-> **完整边界定义见 `.wukong/skills/jie.md`** (Single Source of Truth)
+> **完整边界定义见 `~/.wukong/skills/jie.md`** (Single Source of Truth)
 >
 > 成本路由: CHEAP (10+ 并发) → MEDIUM (2-3 并发) → EXPENSIVE (阻塞)
 
@@ -253,8 +253,9 @@ def read_skill(skill_file):
     project_path = f".claude/skills/{skill_file}"
     if Glob(project_path):
         return Read(project_path)
-    # 回退到全局级 (跨平台)
-    home = Bash("echo ~").stdout.strip()
+    # 回退到全局级 (真正跨平台: Windows/Mac/Linux)
+    import os
+    home = os.path.expanduser("~")  # 跨平台获取 home 目录
     return Read(f"{home}/.claude/skills/{skill_file}")
 
 skill = read_skill(f"{skill_file}.md")
@@ -386,7 +387,7 @@ Task(prompt=f"""
 |------|------|
 | `内观` | 慧模块反思 + 提取锚点 |
 | `压缩` | 生成 🔸 缩形态摘要 |
-| `存档` | 保存到 `.wukong/context/sessions/` |
+| `存档` | 保存到 `~/.wukong/context/sessions/` |
 | `加载 {name}` | 恢复历史会话 |
 | `锚点` | 显示关键决策/约束 |
 
@@ -435,9 +436,9 @@ Task(prompt=f"""
 ## Extended (扩展能力)
 
 需要详细指导时，读取 skills：
-- `.wukong/skills/jie.md` - 戒：规则/安全检查
-- `.wukong/skills/ding.md` - 定：可复现验证
-- `.wukong/skills/hui.md` - 慧：反思与沉淀
-- `.wukong/skills/shi.md` - 识：信息存储
-- `.wukong/skills/jindouyun.md` - 筋斗云：并行执行协议
-- `.wukong/skills/orchestration.md` - 轨道编排详细模式
+- `~/.wukong/skills/jie.md` - 戒：规则/安全检查
+- `~/.wukong/skills/ding.md` - 定：可复现验证
+- `~/.wukong/skills/hui.md` - 慧：反思与沉淀
+- `~/.wukong/skills/shi.md` - 识：信息存储
+- `~/.wukong/skills/jindouyun.md` - 筋斗云：并行执行协议
+- `~/.wukong/skills/orchestration.md` - 轨道编排详细模式
