@@ -108,74 +108,23 @@
 ## 内观反思
 
 > 内观专注于发现系统性问题并提出规则补丁。
+>
+> **完整的内观执行流程见**: `~/.claude/commands/neiguan.md`
 
-### 内观前置检查 (防止锚定偏差)
-
-> **收到内观请求时，先确定范围，再做反思**
+### 内观命令
 
 ```
-收到内观/总结请求
-      │
-      ▼
-┌─────────────────────────────────────────┐
-│  🔍 范围确认 (防锚定偏差):              │
-│                                         │
-│  Q1. 用户说"今天/所有/全部"吗？          │
-│      → 是 → 需要跨 session 数据         │
-│      → 否 → 当前 session 即可           │
-│                                         │
-│  Q2. 需要跨 session 时:                 │
-│      1. Read ~/.wukong/context/index.json│
-│      2. 按日期/项目过滤相关 session      │
-│      3. Read 各 session 的 compact.md   │
-│      4. 汇总后再内观                     │
-└─────────────────────────────────────────┘
+/wukong 内观
 ```
 
-### 跨 Session 内观流程
+执行内观时，**必须遵循 BLOCKING checklist**（见 `neiguan.md`）：
 
-```python
-# 1. 读取 session 索引
-index = Read("~/.wukong/context/index.json")
+1. **Step 1**: Read `~/.wukong/context/index.json`
+2. **Step 2**: Read ALL relevant `sessions/*/compact.md`
+3. **Step 3**: Read `~/.wukong/context/anchors.md`
+4. **Step 4**: Generate output
 
-# 2. 过滤今天的 session (按日期)
-today = date.today().strftime("%Y%m%d")
-today_sessions = [s for s in index["sessions"]
-                  if s["id"].contains(today)]
-
-# 3. 读取各 session 的精简上下文
-for session in today_sessions:
-    compact = Read(f"~/.wukong/context/sessions/{session['id']}/compact.md")
-    # 提取: 项目、任务、决策、问题
-
-# 4. 汇总后做内观
-```
-
-### 跨 Session 内观输出
-
-```markdown
-## 今日工作内观: {date}
-
-### Session 概览
-| Session | 项目 | 主要任务 | 关键决策 |
-|---------|------|----------|----------|
-| {id1} | {proj1} | {task1} | {decision1} |
-| {id2} | {proj2} | {task2} | {decision2} |
-
-### 跨 Session 模式
-- **共性模式**: {发现的共同模式}
-- **关联问题**: {跨 session 的关联}
-
-### 分 Session 详情
-#### Session: {id1} - {project}
-{该 session 的内观}
-
-#### Session: {id2} - {project}
-{该 session 的内观}
-
-### 沉淀建议
-{值得写入 .wukong/context 的内容}
-```
+> **警告**: 跳过任何步骤 = 协议违规。常见错误：只读 index.json 和 anchors，漏掉 sessions 目录。
 
 ### 内观三件事
 

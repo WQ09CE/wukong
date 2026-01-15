@@ -171,7 +171,7 @@ Task(
 
 | 命令 | 动作 | 说明 |
 |------|------|------|
-| `/wukong 内观` | 反思 + 提取锚点 | 整理关键信息，生成三态摘要 |
+| `/wukong 内观` | 反思 + 提取锚点 | **执行 `neiguan.md` 的 BLOCKING checklist** |
 | `/wukong 压缩` | 生成缩形态摘要 | 输出可用于下次会话的精简上下文 |
 | `/wukong 存档` | 保存完整上下文 | 写入 `.wukong/context/sessions/` |
 | `/wukong 加载 {name}` | 加载历史上下文 | 从存档恢复会话 |
