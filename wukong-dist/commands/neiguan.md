@@ -38,8 +38,13 @@
 ### Step 1: Read Session Index
 
 ```bash
-# MUST execute
-cat ~/.wukong/context/index.json
+# MUST execute - Use robust JSON reading to avoid parse errors
+INDEX_FILE=~/.wukong/context/index.json
+if [ -f "$INDEX_FILE" ] && [ -s "$INDEX_FILE" ]; then
+    cat "$INDEX_FILE"
+else
+    echo "INDEX_NOT_EXIST_OR_EMPTY"
+fi
 ```
 
 **Expected data:**
@@ -47,7 +52,9 @@ cat ~/.wukong/context/index.json
 - Project associations
 - Timestamps
 
-**If file doesn't exist:** Create empty introspection for current session only.
+**If file doesn't exist or empty:** Create empty introspection for current session only.
+
+> **Pitfall [P001]**: Never pipe directly to JSON parser without checking file existence first. Empty input causes `JSONDecodeError`.
 
 ---
 
@@ -84,8 +91,13 @@ for session in relevant_sessions:
 ### Step 3: Read Existing Anchors
 
 ```bash
-# MUST execute
-cat ~/.wukong/context/anchors.md
+# MUST execute - Check file existence first
+ANCHORS_FILE=~/.wukong/context/anchors.md
+if [ -f "$ANCHORS_FILE" ] && [ -s "$ANCHORS_FILE" ]; then
+    cat "$ANCHORS_FILE"
+else
+    echo "ANCHORS_NOT_EXIST_OR_EMPTY"
+fi
 ```
 
 **Purpose:**
@@ -93,7 +105,7 @@ cat ~/.wukong/context/anchors.md
 - Avoid duplicate entries
 - Find patterns across sessions
 
-**If file doesn't exist:** Note that no prior anchors exist.
+**If file doesn't exist or empty:** Note that no prior anchors exist.
 
 ---
 
