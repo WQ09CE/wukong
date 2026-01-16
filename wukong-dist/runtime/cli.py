@@ -31,6 +31,7 @@ from scheduler import Scheduler
 from artifact_manager import ArtifactManager
 from anchor_manager import AnchorManager
 from metrics import MetricsCollector, get_default_collector
+from health_monitor import HealthMonitor, HealthStatus
 
 
 # Default paths
@@ -176,6 +177,34 @@ def print_human_readable(result: Dict[str, Any]) -> None:
                 print(f"  Next Ready: {', '.join(next_ready)}")
         else:
             print(f"Failed: {result.get('error', 'Resume failed')}")
+
+    elif "summary" in result and "nodes" in result and "healthy" in result.get("summary", {}):
+        # health result
+        summary = result.get("summary", {})
+        print(f"Health Report ({result.get('timestamp', 'N/A')})")
+        print(f"  Healthy: {summary.get('healthy', 0)}")
+        print(f"  Stalled: {summary.get('stalled', 0)}")
+        print(f"  Timeout: {summary.get('timeout', 0)}")
+        print(f"  Total: {summary.get('total', 0)}")
+
+        nodes = result.get("nodes", {})
+        if nodes:
+            print("\nNode Details:")
+            for node_id, node_data in nodes.items():
+                status = node_data.get("status", "unknown")
+                status_icon = {
+                    "healthy": "[OK]",
+                    "stalled": "[WARN]",
+                    "timeout": "[CRIT]",
+                    "unknown": "[?]",
+                }.get(status, "[?]")
+                seconds = node_data.get("seconds_since_heartbeat")
+                if seconds is not None:
+                    time_str = f"{seconds:.0f}s ago"
+                else:
+                    time_str = "never"
+                tier = node_data.get("cost_tier", "unknown")
+                print(f"  {status_icon} {node_id}: {status} (last: {time_str}, tier: {tier})")
 
     elif "success" in result:
         # complete/fail/abort/resume result
@@ -911,6 +940,119 @@ def visualize_graph(include_status: bool = True) -> str:
     return f"```mermaid\n{mermaid_code}\n```"
 
 
+# ============================================================
+# Health Monitoring Commands
+# ============================================================
+
+
+def get_health(node_id: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Get health status of subagent nodes.
+
+    Args:
+        node_id: Optional specific node to check (if None, check all)
+
+    Returns:
+        Health report dictionary
+    """
+    monitor = HealthMonitor(
+        state_file=DEFAULT_STATE_FILE,
+        events_file=DEFAULT_EVENTS_FILE,
+        taskgraph_file=DEFAULT_TASKGRAPH_FILE,
+    )
+
+    if node_id:
+        # Get specific node health
+        report = monitor.get_node_health(node_id)
+        if report:
+            return {
+                "success": True,
+                "node_id": node_id,
+                **report.to_dict(),
+            }
+        else:
+            return {
+                "success": False,
+                "error": f"Node not found: {node_id}",
+            }
+    else:
+        # Get full health report
+        report = monitor.check_health()
+        return report.to_dict()
+
+
+def record_heartbeat(
+    node_id: str,
+    progress: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Record a heartbeat from a subagent.
+
+    Args:
+        node_id: ID of the node sending heartbeat
+        progress: Optional progress information
+
+    Returns:
+        Success status
+    """
+    monitor = HealthMonitor(
+        state_file=DEFAULT_STATE_FILE,
+        events_file=DEFAULT_EVENTS_FILE,
+        taskgraph_file=DEFAULT_TASKGRAPH_FILE,
+    )
+
+    try:
+        monitor.record_heartbeat(node_id, progress)
+        return {
+            "success": True,
+            "message": f"Heartbeat recorded for {node_id}",
+            "node_id": node_id,
+            "progress": progress or {},
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def clear_heartbeat(node_id: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Clear heartbeat record(s).
+
+    Args:
+        node_id: Specific node to clear (if None, clear all)
+
+    Returns:
+        Success status
+    """
+    monitor = HealthMonitor(
+        state_file=DEFAULT_STATE_FILE,
+        events_file=DEFAULT_EVENTS_FILE,
+        taskgraph_file=DEFAULT_TASKGRAPH_FILE,
+    )
+
+    try:
+        if node_id:
+            cleared = monitor.clear_heartbeat(node_id)
+            if cleared:
+                return {
+                    "success": True,
+                    "message": f"Heartbeat cleared for {node_id}",
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": f"No heartbeat found for {node_id}",
+                }
+        else:
+            count = monitor.clear_all_heartbeats()
+            return {
+                "success": True,
+                "message": f"Cleared {count} heartbeat(s)",
+                "count": count,
+            }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 def anchor_stats() -> Dict[str, Any]:
     """Get anchor statistics."""
     anchor_manager = AnchorManager(DEFAULT_ANCHORS_DIR)
@@ -981,6 +1123,14 @@ Examples:
     %(prog)s fail body_implement --reason "Build error"
     %(prog)s abort --reason "User requested"
     %(prog)s resume
+
+Health Monitoring Commands:
+    %(prog)s health                           # Check health of all nodes
+    %(prog)s health eye_explore               # Check specific node health
+    %(prog)s heartbeat eye_explore            # Record heartbeat
+    %(prog)s heartbeat eye_explore -p '{"files_scanned": 10}'
+    %(prog)s clear-heartbeat                  # Clear all heartbeats
+    %(prog)s clear-heartbeat eye_explore      # Clear specific heartbeat
 
 Anchor Commands:
     %(prog)s anchor search "认证 安全"
@@ -1100,6 +1250,42 @@ Anchor Commands:
         "--no-status",
         action="store_true",
         help="Exclude status colors from diagram",
+    )
+
+    # health command
+    health_parser = subparsers.add_parser(
+        "health",
+        help="Check health status of subagent nodes",
+    )
+    health_parser.add_argument(
+        "node_id",
+        nargs="?",
+        help="Optional: specific node to check",
+    )
+
+    # heartbeat command
+    heartbeat_parser = subparsers.add_parser(
+        "heartbeat",
+        help="Record a heartbeat from a subagent",
+    )
+    heartbeat_parser.add_argument(
+        "node_id",
+        help="ID of the node sending heartbeat",
+    )
+    heartbeat_parser.add_argument(
+        "--progress", "-p",
+        help="Progress info as JSON string (e.g., '{\"files_scanned\": 10}')",
+    )
+
+    # clear-heartbeat command
+    clear_heartbeat_parser = subparsers.add_parser(
+        "clear-heartbeat",
+        help="Clear heartbeat record(s)",
+    )
+    clear_heartbeat_parser.add_argument(
+        "node_id",
+        nargs="?",
+        help="Optional: specific node to clear (clears all if omitted)",
     )
 
     # anchor command group
@@ -1283,6 +1469,21 @@ Anchor Commands:
         mermaid_output = visualize_graph(include_status=not args.no_status)
         print(mermaid_output)
         sys.exit(0)
+    elif args.command == "health":
+        result = get_health(node_id=args.node_id)
+    elif args.command == "heartbeat":
+        # Parse progress JSON if provided
+        progress = None
+        if args.progress:
+            try:
+                progress = json.loads(args.progress)
+            except json.JSONDecodeError:
+                result = {"success": False, "error": "Invalid JSON for progress"}
+                output_result(result, human=args.human)
+                sys.exit(1)
+        result = record_heartbeat(args.node_id, progress)
+    elif args.command == "clear-heartbeat":
+        result = clear_heartbeat(node_id=args.node_id)
     elif args.command == "anchor":
         # Handle anchor subcommands
         if args.anchor_command == "search":

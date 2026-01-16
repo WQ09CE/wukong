@@ -22,6 +22,8 @@ EVENT_TYPES = {
     "SubagentStart",
     "SubagentProgress",
     "SubagentStop",
+    "SubagentStalled",
+    "SubagentTimeout",
     "NodeCompleted",
     "NodeFailed",
     "NodeBlocked",

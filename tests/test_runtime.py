@@ -6,6 +6,8 @@ Tests for:
 - EventBus: Event-driven communication via events.jsonl
 - StateManager: Atomic state management via state.json
 - MetricsCollector: Cost and duration tracking
+- Scheduler: DAG-based task graph scheduling
+- AnchorManager: Anchor management for cross-session knowledge persistence
 
 Run with: python -m pytest tests/test_runtime.py -v
 Or: python tests/test_runtime.py
@@ -37,6 +39,8 @@ from metrics import (
     COST_TIERS,
     ROLE_TO_TIER,
 )
+from scheduler import Scheduler, TRACK_TYPES, NODE_STATUS, GRAPH_STATUS
+from anchor_manager import AnchorManager, ANCHOR_TYPES, EVIDENCE_LEVELS
 
 
 # =============================================================================
@@ -1395,6 +1399,620 @@ class TestMetricsCollector(unittest.TestCase):
 
         self.assertIn("error", data)
         self.assertEqual(data["error"], "Graph not found")
+
+
+# =============================================================================
+# Scheduler Tests
+# =============================================================================
+
+
+class TestScheduler(unittest.TestCase):
+    """Tests for Scheduler class."""
+
+    def setUp(self):
+        """Create temporary directory with test templates."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.template_dir = Path(self.temp_dir) / "templates"
+        self.template_dir.mkdir(parents=True, exist_ok=True)
+        self.scheduler = Scheduler(self.template_dir)
+
+        # Create test templates
+        self._create_test_templates()
+
+    def tearDown(self):
+        """Clean up temporary files."""
+        import shutil
+
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    def _create_test_templates(self):
+        """Create test template files."""
+        # Fix track template
+        fix_template = {
+            "track": "fix",
+            "title": "Fix Bug",
+            "nodes": [
+                {"id": "n1", "role": "eye", "title": "Investigate"},
+                {"id": "n2", "role": "body", "title": "Implement fix"},
+            ],
+            "edges": [
+                {"from": "n1", "to": "n2", "condition": "on_success"}
+            ],
+        }
+        with open(self.template_dir / "fix_track.json", "w") as f:
+            json.dump(fix_template, f)
+
+        # Feature track template
+        feature_template = {
+            "track": "feature",
+            "title": "Add Feature",
+            "nodes": [
+                {"id": "n1", "role": "ear", "title": "Gather requirements"},
+                {"id": "n2", "role": "mind", "title": "Design"},
+                {"id": "n3", "role": "body", "title": "Implement"},
+            ],
+            "edges": [
+                {"from": "n1", "to": "n2", "condition": "on_success"},
+                {"from": "n2", "to": "n3", "condition": "on_success"},
+            ],
+        }
+        with open(self.template_dir / "feature_track.json", "w") as f:
+            json.dump(feature_template, f)
+
+    def test_load_template_success(self):
+        """Test loading a valid template."""
+        template = self.scheduler.load_template("fix")
+
+        self.assertEqual(template["track"], "fix")
+        self.assertEqual(len(template["nodes"]), 2)
+        self.assertEqual(len(template["edges"]), 1)
+
+    def test_load_template_invalid_track(self):
+        """Test loading invalid track raises ValueError."""
+        with self.assertRaises(ValueError) as ctx:
+            self.scheduler.load_template("invalid_track")
+
+        self.assertIn("Invalid track", str(ctx.exception))
+
+    def test_load_template_file_not_found(self):
+        """Test loading non-existent template raises FileNotFoundError."""
+        with self.assertRaises(FileNotFoundError):
+            self.scheduler.load_template("direct")
+
+    def test_instantiate_graph(self):
+        """Test creating a graph instance from template."""
+        template = self.scheduler.load_template("fix")
+        graph = self.scheduler.instantiate_graph(template, "Fix login bug")
+
+        self.assertTrue(graph["id"].startswith("tg_"))
+        self.assertIn("created_at", graph)
+        self.assertIn("updated_at", graph)
+        self.assertEqual(graph["status"], "created")
+        self.assertIn("Fix login bug", graph["title"])
+        self.assertEqual(graph["metadata"]["user_prompt"], "Fix login bug")
+
+    def test_instantiate_graph_with_options(self):
+        """Test instantiating graph with working_dir and tags."""
+        template = self.scheduler.load_template("fix")
+        graph = self.scheduler.instantiate_graph(
+            template,
+            "Fix bug",
+            working_dir="/tmp/project",
+            tags=["urgent", "security"],
+        )
+
+        self.assertEqual(graph["context"]["working_dir"], "/tmp/project")
+        self.assertEqual(graph["metadata"]["tags"], ["urgent", "security"])
+
+    def test_instantiate_graph_resets_node_status(self):
+        """Test that instantiate_graph resets all node statuses to pending."""
+        template = self.scheduler.load_template("fix")
+        graph = self.scheduler.instantiate_graph(template, "Test")
+
+        for node in graph["nodes"]:
+            self.assertEqual(node["status"], "pending")
+            self.assertEqual(node["outputs"], {})
+
+    def test_get_ready_nodes_initial(self):
+        """Test getting ready nodes at start (root nodes)."""
+        template = self.scheduler.load_template("fix")
+        graph = self.scheduler.instantiate_graph(template, "Test")
+
+        ready = self.scheduler.get_ready_nodes(graph)
+
+        # Only n1 should be ready (no incoming edges)
+        self.assertEqual(len(ready), 1)
+        self.assertEqual(ready[0]["id"], "n1")
+
+    def test_get_ready_nodes_after_completion(self):
+        """Test getting ready nodes after completing a node."""
+        template = self.scheduler.load_template("fix")
+        graph = self.scheduler.instantiate_graph(template, "Test")
+
+        # Complete n1
+        self.scheduler.mark_node_status(graph, "n1", "done")
+
+        ready = self.scheduler.get_ready_nodes(graph)
+
+        # Now n2 should be ready
+        self.assertEqual(len(ready), 1)
+        self.assertEqual(ready[0]["id"], "n2")
+
+    def test_get_ready_nodes_no_pending(self):
+        """Test get_ready_nodes returns empty when all nodes done."""
+        template = self.scheduler.load_template("fix")
+        graph = self.scheduler.instantiate_graph(template, "Test")
+
+        # Complete all nodes
+        self.scheduler.mark_node_status(graph, "n1", "done")
+        self.scheduler.mark_node_status(graph, "n2", "done")
+
+        ready = self.scheduler.get_ready_nodes(graph)
+
+        self.assertEqual(len(ready), 0)
+
+    def test_mark_node_status_running(self):
+        """Test marking a node as running."""
+        template = self.scheduler.load_template("fix")
+        graph = self.scheduler.instantiate_graph(template, "Test")
+
+        self.scheduler.mark_node_status(graph, "n1", "running")
+
+        node = self.scheduler._get_node_by_id(graph, "n1")
+        self.assertEqual(node["status"], "running")
+        self.assertIn("n1", graph["execution"]["active_nodes"])
+
+    def test_mark_node_status_done(self):
+        """Test marking a node as done with outputs."""
+        template = self.scheduler.load_template("fix")
+        graph = self.scheduler.instantiate_graph(template, "Test")
+
+        self.scheduler.mark_node_status(
+            graph,
+            "n1",
+            "done",
+            outputs={"found_files": ["a.py", "b.py"]},
+        )
+
+        node = self.scheduler._get_node_by_id(graph, "n1")
+        self.assertEqual(node["status"], "done")
+        self.assertEqual(node["outputs"]["found_files"], ["a.py", "b.py"])
+        self.assertIn("n1", graph["execution"]["completed_nodes"])
+        self.assertNotIn("n1", graph["execution"]["active_nodes"])
+
+    def test_mark_node_status_failed(self):
+        """Test marking a node as failed with error info."""
+        template = self.scheduler.load_template("fix")
+        graph = self.scheduler.instantiate_graph(template, "Test")
+
+        self.scheduler.mark_node_status(
+            graph,
+            "n1",
+            "failed",
+            error={"message": "Timeout", "code": "ETIMEDOUT"},
+        )
+
+        node = self.scheduler._get_node_by_id(graph, "n1")
+        self.assertEqual(node["status"], "failed")
+        self.assertEqual(node["error"]["message"], "Timeout")
+        self.assertIn("n1", graph["execution"]["failed_nodes"])
+
+    def test_mark_node_status_invalid_status(self):
+        """Test marking node with invalid status raises ValueError."""
+        template = self.scheduler.load_template("fix")
+        graph = self.scheduler.instantiate_graph(template, "Test")
+
+        with self.assertRaises(ValueError) as ctx:
+            self.scheduler.mark_node_status(graph, "n1", "invalid_status")
+
+        self.assertIn("Invalid status", str(ctx.exception))
+
+    def test_mark_node_status_node_not_found(self):
+        """Test marking non-existent node raises ValueError."""
+        template = self.scheduler.load_template("fix")
+        graph = self.scheduler.instantiate_graph(template, "Test")
+
+        with self.assertRaises(ValueError) as ctx:
+            self.scheduler.mark_node_status(graph, "nonexistent", "done")
+
+        self.assertIn("Node not found", str(ctx.exception))
+
+    def test_get_downstream_nodes(self):
+        """Test getting downstream nodes."""
+        template = self.scheduler.load_template("fix")
+        graph = self.scheduler.instantiate_graph(template, "Test")
+
+        downstream = self.scheduler.get_downstream_nodes(graph, "n1")
+
+        self.assertEqual(downstream, ["n2"])
+
+    def test_get_upstream_nodes(self):
+        """Test getting upstream nodes."""
+        template = self.scheduler.load_template("fix")
+        graph = self.scheduler.instantiate_graph(template, "Test")
+
+        upstream = self.scheduler.get_upstream_nodes(graph, "n2")
+
+        self.assertEqual(upstream, ["n1"])
+
+    def test_is_graph_complete(self):
+        """Test checking if graph execution is complete."""
+        template = self.scheduler.load_template("fix")
+        graph = self.scheduler.instantiate_graph(template, "Test")
+
+        # Initially not complete
+        self.assertFalse(self.scheduler.is_graph_complete(graph))
+
+        # Complete all nodes
+        self.scheduler.mark_node_status(graph, "n1", "done")
+        self.scheduler.mark_node_status(graph, "n2", "done")
+
+        # Now complete
+        self.assertTrue(self.scheduler.is_graph_complete(graph))
+
+    def test_get_graph_status(self):
+        """Test getting overall graph status."""
+        template = self.scheduler.load_template("fix")
+        graph = self.scheduler.instantiate_graph(template, "Test")
+
+        # Initial status
+        self.assertEqual(self.scheduler.get_graph_status(graph), "created")
+
+        # Start a node
+        self.scheduler.mark_node_status(graph, "n1", "running")
+        self.assertEqual(self.scheduler.get_graph_status(graph), "running")
+
+        # Complete all nodes
+        self.scheduler.mark_node_status(graph, "n1", "done")
+        self.scheduler.mark_node_status(graph, "n2", "done")
+        self.assertEqual(self.scheduler.get_graph_status(graph), "completed")
+
+    def test_get_execution_summary(self):
+        """Test getting execution summary."""
+        template = self.scheduler.load_template("fix")
+        graph = self.scheduler.instantiate_graph(template, "Test")
+
+        self.scheduler.mark_node_status(graph, "n1", "running")
+
+        summary = self.scheduler.get_execution_summary(graph)
+
+        self.assertEqual(summary["total_nodes"], 2)
+        self.assertEqual(summary["running"]["count"], 1)
+        self.assertEqual(summary["pending"]["count"], 1)
+        self.assertEqual(summary["done"]["count"], 0)
+        self.assertIn("n1", summary["running"]["nodes"])
+        self.assertIn("n2", summary["pending"]["nodes"])
+
+    def test_topological_sort(self):
+        """Test topological sorting of nodes."""
+        template = self.scheduler.load_template("feature")
+        graph = self.scheduler.instantiate_graph(template, "Test")
+
+        sorted_ids = self.scheduler.topological_sort(graph)
+
+        # Should be: n1 -> n2 -> n3
+        self.assertEqual(sorted_ids, ["n1", "n2", "n3"])
+
+    def test_render_mermaid(self):
+        """Test rendering graph as Mermaid diagram."""
+        template = self.scheduler.load_template("fix")
+        graph = self.scheduler.instantiate_graph(template, "Test")
+
+        # Mark one node as done
+        self.scheduler.mark_node_status(graph, "n1", "done")
+
+        diagram = self.scheduler.render_mermaid(graph, include_status=True)
+
+        self.assertIn("graph TD", diagram)
+        self.assertIn("n1", diagram)
+        self.assertIn("n2", diagram)
+        self.assertIn("n1 --> n2", diagram)
+        self.assertIn("classDef done", diagram)
+
+
+# =============================================================================
+# AnchorManager Tests
+# =============================================================================
+
+
+class TestAnchorManager(unittest.TestCase):
+    """Tests for AnchorManager class."""
+
+    def setUp(self):
+        """Create temporary directory for anchors."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.anchors_dir = Path(self.temp_dir) / "anchors"
+        self.manager = AnchorManager(self.anchors_dir)
+
+    def tearDown(self):
+        """Clean up temporary files."""
+        import shutil
+
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    def test_init_creates_directories(self):
+        """Test that AnchorManager creates necessary directories."""
+        self.assertTrue(self.anchors_dir.exists())
+        self.assertTrue((self.anchors_dir / "anchors.json").exists())
+        self.assertTrue((self.anchors_dir / "candidates.json").exists())
+
+    def test_add_candidate_basic(self):
+        """Test adding a basic candidate anchor."""
+        candidate_id = self.manager.add_candidate({
+            "type": "decision",
+            "title": "Use PostgreSQL",
+            "content": "PostgreSQL chosen for ACID compliance",
+            "keywords": ["database", "postgresql"],
+        })
+
+        self.assertTrue(candidate_id.startswith("cand_"))
+
+        # Verify it was saved
+        candidate = self.manager.get_candidate(candidate_id)
+        self.assertIsNotNone(candidate)
+        self.assertEqual(candidate["type"], "decision")
+        self.assertEqual(candidate["title"], "Use PostgreSQL")
+
+    def test_add_candidate_with_source(self):
+        """Test adding candidate with source information."""
+        candidate_id = self.manager.add_candidate(
+            {
+                "type": "constraint",
+                "title": "Max 100 concurrent users",
+                "content": "System designed for max 100 concurrent users",
+                "keywords": ["performance", "limits"],
+            },
+            source={"graph_id": "g1", "node_id": "n1"},
+        )
+
+        candidate = self.manager.get_candidate(candidate_id)
+        self.assertEqual(candidate["source"]["graph_id"], "g1")
+        self.assertEqual(candidate["source"]["node_id"], "n1")
+
+    def test_add_candidate_invalid_type(self):
+        """Test adding candidate with invalid type raises ValueError."""
+        with self.assertRaises(ValueError) as ctx:
+            self.manager.add_candidate({
+                "type": "invalid_type",
+                "title": "Test",
+                "content": "Test content",
+            })
+
+        self.assertIn("Invalid anchor type", str(ctx.exception))
+
+    def test_add_candidate_missing_title(self):
+        """Test adding candidate without title raises ValueError."""
+        with self.assertRaises(ValueError) as ctx:
+            self.manager.add_candidate({
+                "type": "decision",
+                "content": "Test content",
+            })
+
+        self.assertIn("must have a non-empty 'title' field", str(ctx.exception))
+
+    def test_promote_anchor(self):
+        """Test promoting a candidate to an anchor."""
+        candidate_id = self.manager.add_candidate({
+            "type": "decision",
+            "title": "Use Redis",
+            "content": "Redis chosen for caching",
+            "keywords": ["cache", "redis"],
+        })
+
+        anchor_id = self.manager.promote_anchor(candidate_id)
+
+        self.assertTrue(anchor_id.startswith("anc_"))
+
+        # Verify anchor exists
+        anchor = self.manager.get_anchor(anchor_id)
+        self.assertIsNotNone(anchor)
+        self.assertEqual(anchor["title"], "Use Redis")
+
+        # Verify candidate is removed
+        candidate = self.manager.get_candidate(candidate_id)
+        self.assertIsNone(candidate)
+
+    def test_promote_anchor_to_project(self):
+        """Test promoting anchor to a project-specific location."""
+        candidate_id = self.manager.add_candidate({
+            "type": "interface",
+            "title": "API Contract",
+            "content": "REST API definition",
+            "keywords": ["api", "rest"],
+        })
+
+        anchor_id = self.manager.promote_anchor(candidate_id, project="myproject")
+
+        # Verify project directory was created
+        project_dir = self.anchors_dir / "myproject"
+        self.assertTrue(project_dir.exists())
+
+        # Verify anchor is in project file
+        anchor = self.manager.get_anchor(anchor_id)
+        self.assertIsNotNone(anchor)
+
+    def test_promote_anchor_candidate_not_found(self):
+        """Test promoting non-existent candidate raises ValueError."""
+        with self.assertRaises(ValueError) as ctx:
+            self.manager.promote_anchor("nonexistent_id")
+
+        self.assertIn("Candidate not found", str(ctx.exception))
+
+    def test_search_anchors_by_keywords(self):
+        """Test searching anchors by keywords."""
+        # Add and promote some anchors
+        cand1 = self.manager.add_candidate({
+            "type": "decision",
+            "title": "Use PostgreSQL",
+            "content": "PostgreSQL for database",
+            "keywords": ["database", "postgresql", "sql"],
+        })
+        self.manager.promote_anchor(cand1)
+
+        cand2 = self.manager.add_candidate({
+            "type": "decision",
+            "title": "Use MongoDB",
+            "content": "MongoDB for documents",
+            "keywords": ["database", "mongodb", "nosql"],
+        })
+        self.manager.promote_anchor(cand2)
+
+        # Search for database-related anchors
+        results = self.manager.search_anchors(["database"])
+
+        self.assertEqual(len(results), 2)
+
+        # Search for specific technology
+        results = self.manager.search_anchors(["postgresql"])
+        self.assertEqual(len(results), 1)
+        self.assertIn("PostgreSQL", results[0]["title"])
+
+    def test_search_anchors_by_type(self):
+        """Test filtering search by anchor type."""
+        cand1 = self.manager.add_candidate({
+            "type": "decision",
+            "title": "Decision 1",
+            "content": "Content",
+            "keywords": ["test"],
+        })
+        self.manager.promote_anchor(cand1)
+
+        cand2 = self.manager.add_candidate({
+            "type": "constraint",
+            "title": "Constraint 1",
+            "content": "Content",
+            "keywords": ["test"],
+        })
+        self.manager.promote_anchor(cand2)
+
+        # Search for decisions only
+        results = self.manager.search_anchors(["test"], anchor_type="decision")
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["type"], "decision")
+
+    def test_get_relevant_anchors(self):
+        """Test getting anchors relevant to a task description."""
+        # Add anchors
+        cand1 = self.manager.add_candidate({
+            "type": "decision",
+            "title": "Authentication Strategy",
+            "content": "Use JWT for authentication",
+            "keywords": ["auth", "jwt", "security"],
+        })
+        self.manager.promote_anchor(cand1)
+
+        # Get relevant anchors for authentication task
+        results = self.manager.get_relevant_anchors(
+            "Implement user authentication using JWT tokens"
+        )
+
+        self.assertGreater(len(results), 0)
+        self.assertIn("Authentication", results[0]["title"])
+
+    def test_list_candidates(self):
+        """Test listing all pending candidates."""
+        cand1 = self.manager.add_candidate({
+            "type": "decision",
+            "title": "Test 1",
+            "content": "Content 1",
+        })
+        cand2 = self.manager.add_candidate({
+            "type": "lesson",
+            "title": "Test 2",
+            "content": "Content 2",
+        })
+
+        candidates = self.manager.list_candidates()
+
+        self.assertEqual(len(candidates), 2)
+
+    def test_delete_candidate(self):
+        """Test deleting a candidate."""
+        cand_id = self.manager.add_candidate({
+            "type": "decision",
+            "title": "Test",
+            "content": "Content",
+        })
+
+        result = self.manager.delete_candidate(cand_id)
+        self.assertTrue(result)
+
+        # Verify it's gone
+        candidate = self.manager.get_candidate(cand_id)
+        self.assertIsNone(candidate)
+
+    def test_delete_candidate_not_found(self):
+        """Test deleting non-existent candidate returns False."""
+        result = self.manager.delete_candidate("nonexistent")
+        self.assertFalse(result)
+
+    def test_delete_anchor(self):
+        """Test deleting an anchor."""
+        cand_id = self.manager.add_candidate({
+            "type": "decision",
+            "title": "Test",
+            "content": "Content",
+        })
+        anc_id = self.manager.promote_anchor(cand_id)
+
+        result = self.manager.delete_anchor(anc_id)
+        self.assertTrue(result)
+
+        # Verify it's gone
+        anchor = self.manager.get_anchor(anc_id)
+        self.assertIsNone(anchor)
+
+    def test_get_statistics(self):
+        """Test getting anchor statistics."""
+        # Add some anchors
+        cand1 = self.manager.add_candidate({
+            "type": "decision",
+            "title": "Test 1",
+            "content": "Content",
+            "evidence_level": "L2",
+        })
+        anc1 = self.manager.promote_anchor(cand1)
+
+        cand2 = self.manager.add_candidate({
+            "type": "constraint",
+            "title": "Test 2",
+            "content": "Content",
+            "evidence_level": "L3",
+        })
+        anc2 = self.manager.promote_anchor(cand2)
+
+        # Add a pending candidate
+        cand3 = self.manager.add_candidate({
+            "type": "lesson",
+            "title": "Test 3",
+            "content": "Content",
+        })
+
+        stats = self.manager.get_statistics()
+
+        self.assertEqual(stats["total_anchors"], 2)
+        self.assertEqual(stats["total_candidates"], 1)
+        self.assertGreater(stats["by_type"]["decision"], 0)
+        self.assertGreater(stats["by_type"]["constraint"], 0)
+
+    def test_export_anchors_md(self):
+        """Test exporting anchors to Markdown format."""
+        cand_id = self.manager.add_candidate({
+            "type": "decision",
+            "title": "Use TypeScript",
+            "content": "TypeScript chosen for type safety",
+            "keywords": ["typescript", "safety"],
+            "evidence_level": "L2",
+        })
+        self.manager.promote_anchor(cand_id)
+
+        md = self.manager.export_anchors_md()
+
+        self.assertIn("# Anchors", md)
+        self.assertIn("Use TypeScript", md)
+        self.assertIn("L2", md)
+        self.assertIn("Architecture Decisions", md)
 
 
 # =============================================================================

@@ -45,6 +45,9 @@ class RuntimeState:
     # Additional metadata
     metadata: Dict[str, Any] = field(default_factory=dict)
 
+    # Heartbeat records for health monitoring (node_id -> heartbeat_data)
+    heartbeats: Dict[str, Any] = field(default_factory=dict)
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert state to dictionary."""
         return {
@@ -57,6 +60,7 @@ class RuntimeState:
             "updated_at": self.updated_at,
             "session_id": self.session_id,
             "metadata": self.metadata,
+            "heartbeats": self.heartbeats,
         }
 
     @classmethod
@@ -72,6 +76,7 @@ class RuntimeState:
             updated_at=data.get("updated_at"),
             session_id=data.get("session_id"),
             metadata=data.get("metadata", {}),
+            heartbeats=data.get("heartbeats", {}),
         )
 
 
