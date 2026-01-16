@@ -123,9 +123,10 @@ if ($Uninstall) {
 
     # Remove Wukong skills (only known Wukong skills)
     $WukongSkills = @(
-        "jie.md", "ding.md", "hui.md", "shi.md",
-        "jindouyun.md", "summoning.md", "orchestration.md",
-        "evidence.md"
+        "architect.md", "code-reviewer.md", "ding.md", "evidence.md",
+        "explorer.md", "hui.md", "implementer.md", "jie.md",
+        "jindouyun.md", "orchestration.md", "requirements-analyst.md",
+        "shi.md", "summoning.md", "tester.md"
     )
     $SkillsDir = "$ClaudeDir\skills"
     $RemovedSkills = 0
@@ -142,9 +143,28 @@ if ($Uninstall) {
         Write-Step "skip" "No skill files found" "Yellow"
     }
 
+    # Remove Wukong agents (six roots)
+    $WukongAgents = @(
+        "eye.md", "ear.md", "nose.md", "tongue.md", "body.md", "mind.md"
+    )
+    $AgentsDir = "$ClaudeDir\agents"
+    $RemovedAgents = 0
+    foreach ($Agent in $WukongAgents) {
+        $AgentPath = Join-Path $AgentsDir $Agent
+        if (Test-Path $AgentPath) {
+            Remove-Item $AgentPath -Force
+            $RemovedAgents++
+        }
+    }
+    if ($RemovedAgents -gt 0) {
+        Write-Step "ok" "Removed $RemovedAgents agent files"
+    } else {
+        Write-Step "skip" "No agent files found" "Yellow"
+    }
+
     # Remove Wukong commands (only known Wukong commands)
     $WukongCommands = @(
-        "wukong.md", "schedule.md", "neiguan.md"
+        "wukong.md", "schedule.md", "neiguan.md", "longimage.md"
     )
     $CommandsDir = "$ClaudeDir\commands"
     $RemovedCommands = 0
@@ -197,6 +217,15 @@ if ($Uninstall) {
         Write-Step "ok" "Removed global context"
     } else {
         Write-Step "skip" "Global context not found" "Yellow"
+    }
+
+    # Remove global runtime
+    $GlobalRuntimeDir = Join-Path $GlobalWukongDir "runtime"
+    if (Test-Path $GlobalRuntimeDir) {
+        Remove-Item $GlobalRuntimeDir -Recurse -Force
+        Write-Step "ok" "Removed global runtime"
+    } else {
+        Write-Step "skip" "Global runtime not found" "Yellow"
     }
 
     # Remove entire global .wukong if empty
@@ -284,12 +313,23 @@ if ($ClearState) {
         $WukongDir = Join-Path $TargetDir ".wukong"
     }
 
+    # Runtime 2.0 state files and directories
+    $GlobalWukongDir = Join-Path $HOME ".wukong"
+
     $StateDirs = @(
         (Join-Path $WukongDir "notepads"),
         (Join-Path $WukongDir "plans"),
         (Join-Path $WukongDir "context\sessions"),
         (Join-Path $WukongDir "context\current")
     )
+
+    $StateFiles = @(
+        (Join-Path $GlobalWukongDir "state.json"),
+        (Join-Path $GlobalWukongDir "taskgraph.json"),
+        (Join-Path $GlobalWukongDir "events.jsonl")
+    )
+
+    $ArtifactsDir = Join-Path $GlobalWukongDir "artifacts"
 
     $ClearedCount = 0
     foreach ($Dir in $StateDirs) {
@@ -307,9 +347,27 @@ if ($ClearState) {
         }
     }
 
+    # Clear Runtime 2.0 state files
+    $ClearedFiles = 0
+    foreach ($File in $StateFiles) {
+        if (Test-Path $File) {
+            Remove-Item $File -Force -ErrorAction SilentlyContinue
+            Write-Step "ok" "Cleared $File"
+            $ClearedFiles++
+        }
+    }
+
+    # Clear artifacts directory
+    if (Test-Path $ArtifactsDir) {
+        Remove-Item "$ArtifactsDir\*" -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Step "ok" "Cleared $ArtifactsDir"
+        $ClearedFiles++
+    }
+
     Write-Host ""
-    if ($ClearedCount -gt 0) {
-        Write-ColorOutput "Cleared $ClearedCount directories!" "Green"
+    $TotalCleared = $ClearedCount + $ClearedFiles
+    if ($TotalCleared -gt 0) {
+        Write-ColorOutput "Cleared $ClearedCount directories and $ClearedFiles state files!" "Green"
     } else {
         Write-ColorOutput "No state to clear." "Yellow"
     }
@@ -421,9 +479,10 @@ if ($Clean) {
 
     # Remove skills
     $WukongSkills = @(
-        "jie.md", "ding.md", "hui.md", "shi.md",
-        "jindouyun.md", "summoning.md", "orchestration.md",
-        "evidence.md"
+        "architect.md", "code-reviewer.md", "ding.md", "evidence.md",
+        "explorer.md", "hui.md", "implementer.md", "jie.md",
+        "jindouyun.md", "orchestration.md", "requirements-analyst.md",
+        "shi.md", "summoning.md", "tester.md"
     )
     foreach ($Skill in $WukongSkills) {
         $SkillPath = Join-Path "$ClaudeDir\skills" $Skill
@@ -432,8 +491,19 @@ if ($Clean) {
         }
     }
 
+    # Remove agents
+    $WukongAgents = @(
+        "eye.md", "ear.md", "nose.md", "tongue.md", "body.md", "mind.md"
+    )
+    foreach ($Agent in $WukongAgents) {
+        $AgentPath = Join-Path "$ClaudeDir\agents" $Agent
+        if (Test-Path $AgentPath) {
+            Remove-Item $AgentPath -Force
+        }
+    }
+
     # Remove commands
-    $WukongCommands = @("wukong.md", "schedule.md", "neiguan.md")
+    $WukongCommands = @("wukong.md", "schedule.md", "neiguan.md", "longimage.md")
     foreach ($Cmd in $WukongCommands) {
         $CmdPath = Join-Path "$ClaudeDir\commands" $Cmd
         if (Test-Path $CmdPath) {
@@ -460,11 +530,12 @@ $Directories = @(
     "$ClaudeDir\rules",
     "$ClaudeDir\commands",
     "$ClaudeDir\skills",
+    "$ClaudeDir\agents",
     "$WukongDir\notepads",
     "$WukongDir\plans",
     "$WukongDir\context\current",
     "$WukongDir\context\sessions",
-    "$WukongDir\scheduler"
+    "$WukongDir\runtime"
 )
 
 foreach ($Dir in $Directories) {
@@ -500,6 +571,16 @@ if (Test-Path $SkillsSource) {
     }
 }
 
+# Copy agents (six roots)
+$AgentsSource = Join-Path $SourceDir "agents"
+if (Test-Path $AgentsSource) {
+    $AgentFiles = Get-ChildItem "$AgentsSource\*.md" -ErrorAction SilentlyContinue
+    if ($AgentFiles) {
+        Copy-Item "$AgentsSource\*.md" -Destination "$ClaudeDir\agents\" -Force
+        Write-Step "ok" "Agents ($($AgentFiles.Count) files)"
+    }
+}
+
 # Copy templates
 $TemplatesSource = Join-Path $SourceDir "templates"
 if (Test-Path $TemplatesSource) {
@@ -522,17 +603,43 @@ if (Test-Path $ContextTemplatesSource) {
     Write-Step "ok" "Context templates"
 }
 
-# Copy scheduler module (project level)
-$SchedulerSource = Join-Path $SourceDir "scheduler"
-if (Test-Path $SchedulerSource) {
-    $SchedulerDest = Join-Path $WukongDir "scheduler"
-    if (-not (Test-Path $SchedulerDest)) {
-        New-Item -ItemType Directory -Path $SchedulerDest -Force | Out-Null
+# Copy runtime module (project level) - Runtime 2.0
+$RuntimeSource = Join-Path $SourceDir "runtime"
+if (Test-Path $RuntimeSource) {
+    $RuntimeDest = Join-Path $WukongDir "runtime"
+    if (-not (Test-Path $RuntimeDest)) {
+        New-Item -ItemType Directory -Path $RuntimeDest -Force | Out-Null
     }
-    $SchedulerFiles = Get-ChildItem "$SchedulerSource\*.py" -ErrorAction SilentlyContinue
-    if ($SchedulerFiles) {
-        Copy-Item "$SchedulerSource\*.py" -Destination $SchedulerDest -Force
-        Write-Step "ok" "Scheduler module ($($SchedulerFiles.Count) files)"
+    # Copy Python files (exclude test_*.py and example_*.py)
+    $RuntimeFiles = Get-ChildItem "$RuntimeSource\*.py" -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notlike "test_*.py" -and $_.Name -notlike "example_*.py" }
+    if ($RuntimeFiles) {
+        foreach ($File in $RuntimeFiles) {
+            Copy-Item $File.FullName -Destination $RuntimeDest -Force
+        }
+        Write-Step "ok" "Runtime module ($($RuntimeFiles.Count) files) -> project"
+    }
+
+    # Copy runtime templates
+    $RuntimeTemplatesSource = Join-Path $RuntimeSource "templates"
+    if (Test-Path $RuntimeTemplatesSource) {
+        $RuntimeTemplatesDest = Join-Path $RuntimeDest "templates"
+        if (-not (Test-Path $RuntimeTemplatesDest)) {
+            New-Item -ItemType Directory -Path $RuntimeTemplatesDest -Force | Out-Null
+        }
+        Copy-Item "$RuntimeTemplatesSource\*" -Destination $RuntimeTemplatesDest -Recurse -Force
+        Write-Step "ok" "Runtime templates -> project"
+    }
+
+    # Copy runtime schema
+    $RuntimeSchemaSource = Join-Path $RuntimeSource "schema"
+    if (Test-Path $RuntimeSchemaSource) {
+        $RuntimeSchemaDest = Join-Path $RuntimeDest "schema"
+        if (-not (Test-Path $RuntimeSchemaDest)) {
+            New-Item -ItemType Directory -Path $RuntimeSchemaDest -Force | Out-Null
+        }
+        Copy-Item "$RuntimeSchemaSource\*" -Destination $RuntimeSchemaDest -Recurse -Force
+        Write-Step "ok" "Runtime schema -> project"
     }
 }
 
@@ -543,10 +650,14 @@ if (Test-Path $ContextSource) {
     if (-not (Test-Path $ContextDest)) {
         New-Item -ItemType Directory -Path $ContextDest -Force | Out-Null
     }
-    $ContextFiles = Get-ChildItem "$ContextSource\*.py" -ErrorAction SilentlyContinue
+    # Exclude test_*.py, example_*.py, *_usage.py
+    $ContextFiles = Get-ChildItem "$ContextSource\*.py" -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notlike "test_*.py" -and $_.Name -notlike "example_*.py" -and $_.Name -notlike "*_usage.py" }
     if ($ContextFiles) {
-        Copy-Item "$ContextSource\*.py" -Destination $ContextDest -Force
-        Write-Step "ok" "Context module ($($ContextFiles.Count) files)"
+        foreach ($File in $ContextFiles) {
+            Copy-Item $File.FullName -Destination $ContextDest -Force
+        }
+        Write-Step "ok" "Context module ($($ContextFiles.Count) files) -> project"
     }
 }
 
@@ -600,17 +711,43 @@ else {
     Write-Step "skip" "No hooks directory found" "Yellow"
 }
 
-# Copy scheduler module (global)
-$GlobalSchedulerDir = Join-Path $GlobalWukongDir "scheduler"
-if (-not (Test-Path $GlobalSchedulerDir)) {
-    New-Item -ItemType Directory -Path $GlobalSchedulerDir -Force | Out-Null
+# Copy runtime module (global) - Runtime 2.0
+$GlobalRuntimeDir = Join-Path $GlobalWukongDir "runtime"
+if (-not (Test-Path $GlobalRuntimeDir)) {
+    New-Item -ItemType Directory -Path $GlobalRuntimeDir -Force | Out-Null
 }
-$SchedulerSource = Join-Path $SourceDir "scheduler"
-if (Test-Path $SchedulerSource) {
-    $SchedulerFiles = Get-ChildItem "$SchedulerSource\*.py" -ErrorAction SilentlyContinue
-    if ($SchedulerFiles) {
-        Copy-Item "$SchedulerSource\*.py" -Destination $GlobalSchedulerDir -Force
-        Write-Step "ok" "Installed scheduler to ~\.wukong\scheduler\ ($($SchedulerFiles.Count) files)"
+$RuntimeSource = Join-Path $SourceDir "runtime"
+if (Test-Path $RuntimeSource) {
+    # Copy Python files (exclude test_*.py and example_*.py)
+    $RuntimeFiles = Get-ChildItem "$RuntimeSource\*.py" -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notlike "test_*.py" -and $_.Name -notlike "example_*.py" }
+    if ($RuntimeFiles) {
+        foreach ($File in $RuntimeFiles) {
+            Copy-Item $File.FullName -Destination $GlobalRuntimeDir -Force
+        }
+        Write-Step "ok" "Runtime -> ~\.wukong\runtime\ ($($RuntimeFiles.Count) files)"
+    }
+
+    # Copy runtime templates to global
+    $RuntimeTemplatesSource = Join-Path $RuntimeSource "templates"
+    if (Test-Path $RuntimeTemplatesSource) {
+        $GlobalRuntimeTemplatesDir = Join-Path $GlobalRuntimeDir "templates"
+        if (-not (Test-Path $GlobalRuntimeTemplatesDir)) {
+            New-Item -ItemType Directory -Path $GlobalRuntimeTemplatesDir -Force | Out-Null
+        }
+        Copy-Item "$RuntimeTemplatesSource\*" -Destination $GlobalRuntimeTemplatesDir -Recurse -Force
+        Write-Step "ok" "Runtime templates -> global"
+    }
+
+    # Copy runtime schema to global
+    $RuntimeSchemaSource = Join-Path $RuntimeSource "schema"
+    if (Test-Path $RuntimeSchemaSource) {
+        $GlobalRuntimeSchemaDir = Join-Path $GlobalRuntimeDir "schema"
+        if (-not (Test-Path $GlobalRuntimeSchemaDir)) {
+            New-Item -ItemType Directory -Path $GlobalRuntimeSchemaDir -Force | Out-Null
+        }
+        Copy-Item "$RuntimeSchemaSource\*" -Destination $GlobalRuntimeSchemaDir -Recurse -Force
+        Write-Step "ok" "Runtime schema -> global"
     }
 }
 
@@ -621,10 +758,14 @@ if (-not (Test-Path $GlobalContextDir)) {
 }
 $ContextSource = Join-Path $SourceDir "context"
 if (Test-Path $ContextSource) {
-    $ContextFiles = Get-ChildItem "$ContextSource\*.py" -ErrorAction SilentlyContinue
+    # Exclude test_*.py, example_*.py, *_usage.py
+    $ContextFiles = Get-ChildItem "$ContextSource\*.py" -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notlike "test_*.py" -and $_.Name -notlike "example_*.py" -and $_.Name -notlike "*_usage.py" }
     if ($ContextFiles) {
-        Copy-Item "$ContextSource\*.py" -Destination $GlobalContextDir -Force
-        Write-Step "ok" "Installed context to ~\.wukong\context\ ($($ContextFiles.Count) files)"
+        foreach ($File in $ContextFiles) {
+            Copy-Item $File.FullName -Destination $GlobalContextDir -Force
+        }
+        Write-Step "ok" "Context -> ~\.wukong\context\ ($($ContextFiles.Count) files)"
     }
 }
 
@@ -780,10 +921,11 @@ $VerificationItems = @(
     @{ Path = "$ClaudeDir\rules\00-wukong-core.md"; Name = "Core rule" },
     @{ Path = "$ClaudeDir\skills"; Name = "Skills directory" },
     @{ Path = "$ClaudeDir\commands"; Name = "Commands directory" },
-    @{ Path = "$WukongDir\scheduler"; Name = "Scheduler module" },
+    @{ Path = "$ClaudeDir\agents"; Name = "Agents directory" },
+    @{ Path = "$WukongDir\runtime"; Name = "Runtime module" },
     @{ Path = "$WukongDir\context"; Name = "Context module" },
     @{ Path = "$GlobalWukongDir\hooks"; Name = "Global hooks" },
-    @{ Path = "$GlobalWukongDir\scheduler"; Name = "Global scheduler" },
+    @{ Path = "$GlobalWukongDir\runtime"; Name = "Global runtime" },
     @{ Path = "$GlobalWukongDir\context"; Name = "Global context" }
 )
 
@@ -823,12 +965,14 @@ Write-Host "  $ClaudeDir\skills\    " -NoNewline -ForegroundColor DarkGray
 Write-Host "Avatar skills"
 Write-Host "  $ClaudeDir\commands\  " -NoNewline -ForegroundColor DarkGray
 Write-Host "Commands"
+Write-Host "  $ClaudeDir\agents\    " -NoNewline -ForegroundColor DarkGray
+Write-Host "Agents (six roots)"
 Write-Host "  $WukongDir\           " -NoNewline -ForegroundColor DarkGray
 Write-Host "Work data"
 Write-Host "  ~\.wukong\hooks\      " -NoNewline -ForegroundColor DarkGray
 Write-Host "Global hooks"
-Write-Host "  ~\.wukong\scheduler\  " -NoNewline -ForegroundColor DarkGray
-Write-Host "Scheduler module"
+Write-Host "  ~\.wukong\runtime\    " -NoNewline -ForegroundColor DarkGray
+Write-Host "Runtime CLI"
 Write-Host "  ~\.wukong\context\    " -NoNewline -ForegroundColor DarkGray
 Write-Host "Context module"
 Write-Host ""
