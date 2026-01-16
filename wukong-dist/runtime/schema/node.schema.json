@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wukong.dev/schema/node.schema.json",
+  "title": "Wukong Node",
+  "description": "A node in the Wukong TaskGraph representing a single execution unit",
+  "type": "object",
+  "required": ["id", "title", "role", "executor", "status"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for this node",
+      "pattern": "^[a-z0-9_-]+$"
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title for this node"
+    },
+    "role": {
+      "type": "string",
+      "enum": ["eye", "ear", "nose", "tongue", "body", "mind"],
+      "description": "The six roots (六根) role assignment"
+    },
+    "executor": {
+      "type": "object",
+      "required": ["type", "name"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["subagent", "main"],
+          "description": "Executor type: subagent for clones, main for body direct execution"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the executor (e.g., 眼分身, 斗战胜佛)"
+        }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "File paths required as input"
+        },
+        "context_refs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "References to context items (anchors, decisions)"
+        },
+        "upstream_outputs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "References to outputs from upstream nodes (format: node_id.output_key)"
+        }
+      },
+      "default": {}
+    },
+    "constraints": {
+      "type": "object",
+      "properties": {
+        "allowed_tools": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Whitelist of tools this node can use"
+        },
+        "time_budget_sec": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum execution time in seconds"
+        },
+        "cost_tier": {
+          "type": "string",
+          "enum": ["cheap", "medium", "expensive"],
+          "description": "Cost tier affecting concurrency limits"
+        },
+        "background": {
+          "type": "string",
+          "enum": ["required", "optional", "forbidden"],
+          "description": "Background execution mode"
+        }
+      },
+      "default": {}
+    },
+    "quality": {
+      "type": "object",
+      "properties": {
+        "evidence_level_required": {
+          "type": "string",
+          "enum": ["L0", "L1", "L2", "L3"],
+          "description": "Required evidence level: L0=speculation, L1=reference, L2=local verification, L3=integration"
+        },
+        "checklist": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Checklist items that must be verified"
+        }
+      },
+      "default": {}
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "running", "done", "failed", "blocked"],
+      "description": "Current execution status of this node"
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "artifacts_dir": {
+          "type": "string",
+          "description": "Directory containing output artifacts"
+        },
+        "summary": {
+          "type": "string",
+          "description": "Brief summary of execution results"
+        },
+        "evidence": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Evidence items supporting completion claim"
+        }
+      },
+      "default": {}
+    },
+    "error": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Error code"
+        },
+        "message": {
+          "type": "string",
+          "description": "Error message"
+        },
+        "recoverable": {
+          "type": "boolean",
+          "description": "Whether this error is recoverable"
+        }
+      }
+    }
+  }
+}

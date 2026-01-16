@@ -107,9 +107,9 @@ else:
 
 | Track | Trigger | Flow |
 |-------|---------|------|
-| **Feature** | "Add...", "Create...", "New..." | 耳→意→斗战胜佛+眼→舌→鼻 |
-| **Fix** | "Fix...", "Bug...", "Error..." | 眼→斗战胜佛→舌 |
-| **Refactor** | "Refactor...", "Clean up..." | 眼→意→斗战胜佛→舌 |
+| **Feature** | "Add...", "Create...", "New..." | [耳+眼]→[意]→[身]→[舌+鼻] |
+| **Fix** | "Fix...", "Bug...", "Error..." | [眼+鼻]→[身]→[舌] |
+| **Refactor** | "Refactor...", "Clean up..." | [眼]→[意]→[身]→[鼻+舌] |
 | **Direct** | Simple, trivial changes | Execute directly |
 
 ## Summoning Avatars (召唤分身)
@@ -232,79 +232,125 @@ When user invokes `/wukong 自检`, execute environment validation:
 # Execute this check directly in Claude using Bash tool:
 
 echo "═══════════════════════════════════════════════════"
-echo " Wukong Self-Check (悟空自检)"
+echo " Wukong 2.0 Self-Check (悟空自检)"
 echo "═══════════════════════════════════════════════════"
 echo ""
 
-# 1. Check skill files
-echo "1. Checking ~/.claude/skills/..."
-SKILL_COUNT=$(ls ~/.claude/skills/*.md 2>/dev/null | wc -l)
-if [ "$SKILL_COUNT" -gt 0 ]; then
-    echo "   ✓ Found $SKILL_COUNT skill files"
+# 1. Check skill files (project-level or global)
+echo "1. Skills"
+PROJECT_SKILLS=$(ls .claude/skills/*.md 2>/dev/null | wc -l | tr -d ' ')
+GLOBAL_SKILLS=$(ls ~/.claude/skills/*.md 2>/dev/null | wc -l | tr -d ' ')
+if [ "$PROJECT_SKILLS" -gt 0 ]; then
+    echo "   ✓ Found $PROJECT_SKILLS skill files (project: .claude/skills/)"
+elif [ "$GLOBAL_SKILLS" -gt 0 ]; then
+    echo "   ✓ Found $GLOBAL_SKILLS skill files (global: ~/.claude/skills/)"
 else
     echo "   ✗ No skill files found"
 fi
 
-# 2. Check rule files
+# 2. Check rule files (project-level or global)
 echo ""
-echo "2. Checking ~/.claude/rules/..."
-RULE_COUNT=$(ls ~/.claude/rules/*.md 2>/dev/null | wc -l)
-if [ "$RULE_COUNT" -gt 0 ]; then
-    echo "   ✓ Found $RULE_COUNT rule files"
+echo "2. Rules"
+PROJECT_RULES=$(ls .claude/rules/*.md 2>/dev/null | wc -l | tr -d ' ')
+GLOBAL_RULES=$(ls ~/.claude/rules/*.md 2>/dev/null | wc -l | tr -d ' ')
+if [ "$PROJECT_RULES" -gt 0 ]; then
+    echo "   ✓ Found $PROJECT_RULES rule files (project: .claude/rules/)"
+elif [ "$GLOBAL_RULES" -gt 0 ]; then
+    echo "   ✓ Found $GLOBAL_RULES rule files (global: ~/.claude/rules/)"
 else
-    echo "   ✗ No rule files found"
+    echo "   ✗ No rule files found (run install.sh in project)"
 fi
 
-# 3. Check scheduler module
+# 3. Check hooks
 echo ""
-echo "3. Checking ~/.wukong/scheduler/..."
-if [ -f ~/.wukong/scheduler/scheduler.py ]; then
-    echo "   ✓ scheduler.py exists"
+echo "3. Hooks (~/.wukong/hooks/)"
+HOOK_FILES=("hui-extract.py" "on_subagent_stop.py" "on_stop.py")
+HOOK_OK=0
+HOOK_MISSING=0
+for hook in "${HOOK_FILES[@]}"; do
+    if [ -f ~/.wukong/hooks/$hook ]; then
+        ((HOOK_OK++))
+    else
+        ((HOOK_MISSING++))
+    fi
+done
+if [ "$HOOK_MISSING" -eq 0 ]; then
+    echo "   ✓ All $HOOK_OK hooks present"
 else
-    echo "   ✗ scheduler.py missing"
+    echo "   ⚠ $HOOK_OK/$((HOOK_OK + HOOK_MISSING)) hooks present"
 fi
 
-# 4. Check context module
+# 4. Check Runtime 2.0 modules
 echo ""
-echo "4. Checking ~/.wukong/context/..."
+echo "4. Runtime 2.0 (~/.wukong/runtime/)"
+RUNTIME_FILES=("cli.py" "event_bus.py" "state_manager.py" "scheduler.py" "artifact_manager.py" "anchor_manager.py" "metrics.py")
+RUNTIME_OK=0
+RUNTIME_MISSING=0
+for mod in "${RUNTIME_FILES[@]}"; do
+    if [ -f ~/.wukong/runtime/$mod ]; then
+        ((RUNTIME_OK++))
+    else
+        ((RUNTIME_MISSING++))
+    fi
+done
+if [ "$RUNTIME_MISSING" -eq 0 ]; then
+    echo "   ✓ All $RUNTIME_OK runtime modules present"
+else
+    echo "   ⚠ $RUNTIME_OK/$((RUNTIME_OK + RUNTIME_MISSING)) modules present"
+fi
+
+# 5. Check DAG templates
+echo ""
+echo "5. DAG Templates (~/.wukong/runtime/templates/)"
+TEMPLATE_FILES=("fix_track.json" "feature_track.json" "refactor_track.json" "direct_track.json")
+TEMPLATE_OK=0
+for tpl in "${TEMPLATE_FILES[@]}"; do
+    if [ -f ~/.wukong/runtime/templates/$tpl ]; then
+        ((TEMPLATE_OK++))
+    fi
+done
+if [ "$TEMPLATE_OK" -eq 4 ]; then
+    echo "   ✓ All 4 track templates present"
+else
+    echo "   ⚠ $TEMPLATE_OK/4 templates present"
+fi
+
+# 6. Check context module
+echo ""
+echo "6. Context (~/.wukong/context/)"
 if [ -f ~/.wukong/context/snapshot.py ]; then
-    echo "   ✓ snapshot.py exists"
+    echo "   ✓ Context module present"
 else
-    echo "   ✗ snapshot.py missing"
+    echo "   ⚠ Context module missing"
 fi
 
-# 5. Check hooks
+# 7. Test Runtime 2.0 CLI
 echo ""
-echo "5. Checking ~/.wukong/hooks/..."
-if [ -f ~/.wukong/hooks/hui-extract.py ]; then
-    echo "   ✓ hui-extract.py exists"
-else
-    echo "   ✗ hui-extract.py missing"
-fi
-
-# 6. Test scheduler import
-echo ""
-echo "6. Testing scheduler functionality..."
+echo "7. Testing Runtime 2.0 CLI..."
 python3 << 'PYTHON_SCRIPT'
 import sys
 import os
-sys.path.insert(0, os.path.expanduser('~/.wukong/scheduler'))
-from scheduler import WukongScheduler, TrackType
-s = WukongScheduler()
-tests = [
-    ('Add login feature', TrackType.FEATURE),
-    ('Fix the bug', TrackType.FIX),
-    ('Refactor auth', TrackType.REFACTOR),
-]
-all_pass = True
-for task, expected in tests:
-    result = s.detect_track(task)
-    if result != expected:
-        all_pass = False
-        print(f'   ✗ Track detection failed: {task}')
-if all_pass:
-    print('   ✓ Track detection OK (FEATURE/FIX/REFACTOR)')
+sys.path.insert(0, os.path.expanduser('~/.wukong/runtime'))
+try:
+    from event_bus import EventBus
+    from state_manager import StateManager
+    from scheduler import Scheduler
+    from artifact_manager import ArtifactManager
+    from anchor_manager import AnchorManager
+    from metrics import MetricsCollector
+    print('   ✓ All runtime modules importable')
+except ImportError as e:
+    print(f'   ✗ Import error: {e}')
 PYTHON_SCRIPT
+
+# 8. Test Runtime CLI commands
+echo ""
+echo "8. Testing CLI commands..."
+if python3 ~/.wukong/runtime/cli.py analyze "Fix login bug" >/dev/null 2>&1; then
+    echo "   ✓ CLI analyze command works"
+else
+    echo "   ⚠ CLI analyze command failed"
+fi
 
 echo ""
 echo "═══════════════════════════════════════════════════"
@@ -315,26 +361,32 @@ echo "════════════════════════�
 **Expected Output:**
 ```
 ═══════════════════════════════════════════════════
- Wukong Self-Check (悟空自检)
+ Wukong 2.0 Self-Check (悟空自检)
 ═══════════════════════════════════════════════════
 
-1. Checking ~/.claude/skills/...
-   ✓ Found 13 skill files
+1. Skills
+   ✓ Found 14 skill files (project: .claude/skills/)
 
-2. Checking ~/.claude/rules/...
-   ✓ Found 1 rule files
+2. Rules
+   ✓ Found 1 rule files (project: .claude/rules/)
 
-3. Checking ~/.wukong/scheduler/...
-   ✓ scheduler.py exists
+3. Hooks (~/.wukong/hooks/)
+   ✓ All 3 hooks present
 
-4. Checking ~/.wukong/context/...
-   ✓ snapshot.py exists
+4. Runtime 2.0 (~/.wukong/runtime/)
+   ✓ All 7 runtime modules present
 
-5. Checking ~/.wukong/hooks/...
-   ✓ hui-extract.py exists
+5. DAG Templates (~/.wukong/runtime/templates/)
+   ✓ All 4 track templates present
 
-6. Testing scheduler functionality...
-   ✓ Track detection OK (FEATURE/FIX/REFACTOR)
+6. Context (~/.wukong/context/)
+   ✓ Context module present
+
+7. Testing Runtime 2.0 CLI...
+   ✓ All runtime modules importable
+
+8. Testing CLI commands...
+   ✓ CLI analyze command works
 
 ═══════════════════════════════════════════════════
  Self-Check Complete

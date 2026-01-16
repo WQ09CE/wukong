@@ -4,7 +4,7 @@
 >
 > **Related References:**
 > - Summoning Protocol (4-part declaration + 7-section prompt) -> `summoning.md`
-> - Cost-Based Routing -> `~/.wukong/scheduler/scheduler.py`
+> - Cost-Based Routing -> `~/.wukong/runtime/scheduler.py`
 > - Parallel Execution -> `jindouyun.md`
 > - Introspection Protocol -> `hui.md`
 > - Todo Tracking -> `00-wukong-core.md`

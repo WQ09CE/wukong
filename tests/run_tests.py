@@ -42,8 +42,8 @@ WUKONG_DIST = PROJECT_ROOT / "wukong-dist"
 
 # Add module paths
 sys.path.insert(0, str(WUKONG_DIST / "hooks"))
-sys.path.insert(0, str(WUKONG_DIST / "scheduler"))
 sys.path.insert(0, str(WUKONG_DIST / "context"))
+sys.path.insert(0, str(WUKONG_DIST / "runtime"))
 sys.path.insert(0, str(TESTS_DIR))
 
 
@@ -77,8 +77,9 @@ def run_unit_tests(verbose: bool = False) -> tuple[int, int]:
 
     test_modules = [
         ("test_hui_extract", "慧模块提取"),
-        ("test_scheduler", "调度器"),
         ("test_context", "上下文优化"),
+        ("test_runtime", "Runtime 2.0"),
+        ("test_hooks", "Hooks模块"),
     ]
 
     passed = 0
@@ -119,39 +120,7 @@ def run_integration_tests(verbose: bool = False) -> tuple[int, int]:
     passed = 0
     failed = 0
 
-    # Test 1: Scheduler → TodoWrite integration
-    try:
-        from scheduler import WukongScheduler, TrackType
-        from todo_integration import TodoWriteIntegration
-
-        scheduler = WukongScheduler()
-        track = scheduler.detect_track("Add user authentication feature")
-
-        if track == TrackType.FEATURE:
-            passed += 1
-            print_result("Scheduler track detection", True)
-        else:
-            failed += 1
-            print_result("Scheduler track detection", False, f"Expected FEATURE, got {track}")
-
-        # Generate todo call (need to plan the track first)
-        scheduler.plan_track(track, "Add authentication")
-        integration = TodoWriteIntegration(scheduler)
-        todo_call = integration.generate_todo_call()
-        todos = todo_call.get("todos", [])
-
-        if len(todos) > 0:
-            passed += 1
-            print_result("TodoWrite integration", True)
-        else:
-            failed += 1
-            print_result("TodoWrite integration", False, "No todos generated")
-
-    except Exception as e:
-        failed += 2
-        print_result("Scheduler → TodoWrite", False, str(e))
-
-    # Test 2: Context snapshot → aggregator flow
+    # Test 1: Context snapshot → aggregator flow
     try:
         from snapshot import create_snapshot, get_snapshot_for_task
         from aggregator import TaskResult, ResultAggregator
@@ -204,25 +173,12 @@ def run_e2e_tests(verbose: bool = False) -> tuple[int, int]:
 
     # Test: Full 六根→戒定慧识 flow simulation
     try:
-        from scheduler import WukongScheduler, TrackType, TRACK_DAG, AVATAR_CONFIG
         from snapshot import create_snapshot, get_snapshot_for_task
         from aggregator import ResultAggregator, TaskResult
         from importance import mark, Importance, compress_by_importance
 
-        # Step 1: Task arrives → Scheduler analyzes
-        scheduler = WukongScheduler()
-        task = "Add user login with OAuth2 feature"  # Use "Add" to trigger FEATURE track
-        track = scheduler.detect_track(task)
-        dag = TRACK_DAG.get(track, [])
-
-        if len(dag) > 0 or track == TrackType.FEATURE:
-            passed += 1
-            print_result("Step 1: Scheduler DAG generation", True)
-        else:
-            failed += 1
-            print_result("Step 1: Scheduler DAG generation", False)
-
-        # Step 2: Create context snapshot for avatars
+        # Step 1: Create context snapshot for avatars
+        task = "Add user login with OAuth2 feature"
         snapshot = create_snapshot(
             session_id="e2e-test",
             compact_context=f"Task: {task}",
@@ -236,12 +192,12 @@ def run_e2e_tests(verbose: bool = False) -> tuple[int, int]:
         inject_content = get_snapshot_for_task(snapshot, "test-task")
         if "CONTEXT SNAPSHOT" in inject_content or snapshot.session_id == "e2e-test":
             passed += 1
-            print_result("Step 2: Context injection format", True)
+            print_result("Step 1: Context injection format", True)
         else:
             failed += 1
-            print_result("Step 2: Context injection format", False)
+            print_result("Step 1: Context injection format", False)
 
-        # Step 3: Simulate avatar outputs with importance marking
+        # Step 2: Simulate avatar outputs with importance marking
         # mark() requires: content, importance, category, source
         eye_output = mark("Found 3 relevant files", Importance.HIGH, "file", "眼分身")
         mind_output = mark("Designed OAuth2 flow", Importance.HIGH, "decision", "意分身")
@@ -250,12 +206,12 @@ def run_e2e_tests(verbose: bool = False) -> tuple[int, int]:
 
         if len(compressed) > 0:
             passed += 1
-            print_result("Step 3: Importance-based compression", True)
+            print_result("Step 2: Importance-based compression", True)
         else:
             failed += 1
-            print_result("Step 3: Importance-based compression", False)
+            print_result("Step 2: Importance-based compression", False)
 
-        # Step 4: Aggregate results (TaskResult is dataclass)
+        # Step 3: Aggregate results (TaskResult is dataclass)
         aggregator = ResultAggregator()
         for avatar in ["眼", "意", "身"]:
             aggregator.add_result(TaskResult(
@@ -270,13 +226,13 @@ def run_e2e_tests(verbose: bool = False) -> tuple[int, int]:
         # Check aggregator processed all 3 tasks
         if "3" in summary or "完成" in summary:
             passed += 1
-            print_result("Step 4: Result aggregation", True)
+            print_result("Step 3: Result aggregation", True)
         else:
             failed += 1
-            print_result("Step 4: Result aggregation", False)
+            print_result("Step 3: Result aggregation", False)
 
     except Exception as e:
-        failed += 4
+        failed += 3
         print_result("E2E flow", False, str(e))
 
     return passed, failed

@@ -6,15 +6,32 @@
     Installs Wukong multi-agent framework for Claude Code on Windows.
 .PARAMETER TargetDir
     Target directory for installation. Defaults to current directory.
+.PARAMETER Clean
+    Perform a clean install by removing existing Wukong files first.
+.PARAMETER Uninstall
+    Remove Wukong from the system.
+.PARAMETER Force
+    Skip confirmation prompts.
+.PARAMETER ClearState
+    Clear runtime state (notepads, plans, sessions) without reinstalling.
 .EXAMPLE
     .\install.ps1
     .\install.ps1 -TargetDir "C:\Projects\myproject"
     .\install.ps1 C:\Projects\myproject
+    .\install.ps1 -Clean
+    .\install.ps1 -Uninstall
+    .\install.ps1 -Uninstall -Force
+    .\install.ps1 -ClearState
 #>
 
 param(
     [Parameter(Position = 0)]
-    [string]$TargetDir
+    [string]$TargetDir,
+
+    [switch]$Clean,
+    [switch]$Uninstall,
+    [switch]$Force,
+    [switch]$ClearState
 )
 
 $ErrorActionPreference = "Stop"
@@ -32,8 +49,289 @@ function Write-Step {
     Write-Host "] $Message"
 }
 
+# ============================================================
+# Python Command Detection
+# ============================================================
+function Get-PythonCommand {
+    # Try python3 first (preferred on Unix-like systems)
+    try {
+        $null = & python3 --version 2>&1
+        return "python3"
+    } catch {}
+
+    # Fall back to python (common on Windows)
+    try {
+        $null = & python --version 2>&1
+        return "python"
+    } catch {}
+
+    # No Python found
+    return $null
+}
+
+# Detect Python command early
+$PythonCmd = Get-PythonCommand
+
+# ============================================================
+# Handle Uninstall
+# ============================================================
+if ($Uninstall) {
+    Write-ColorOutput "Wukong Uninstaller" "Blue"
+    Write-Host ""
+
+    # Determine target directories
+    $ProjectRoot = Get-Location
+    if ([string]::IsNullOrEmpty($TargetDir)) {
+        $TargetDir = $ProjectRoot
+    }
+
+    if ($TargetDir -like "*.claude" -or $TargetDir -like "*.claude\") {
+        $ClaudeDir = $TargetDir
+        $WukongDir = Join-Path (Split-Path $TargetDir -Parent) ".wukong"
+    }
+    else {
+        $ClaudeDir = Join-Path $TargetDir ".claude"
+        $WukongDir = Join-Path $TargetDir ".wukong"
+    }
+    $GlobalWukongDir = Join-Path $HOME ".wukong"
+
+    # Confirm uninstall
+    if (-not $Force) {
+        Write-Host "This will remove Wukong files from:"
+        Write-Host "  - $ClaudeDir" -ForegroundColor DarkGray
+        Write-Host "  - $WukongDir" -ForegroundColor DarkGray
+        Write-Host "  - $GlobalWukongDir" -ForegroundColor DarkGray
+        Write-Host ""
+        $Response = Read-Host "Continue? [y/N]"
+        if ($Response -notmatch "^[Yy]") {
+            Write-Host "Cancelled."
+            exit 0
+        }
+    }
+
+    Write-Host ""
+    Write-ColorOutput "[1/3] Removing Project Files" "Blue"
+
+    # Remove core rule
+    $CoreRule = "$ClaudeDir\rules\00-wukong-core.md"
+    if (Test-Path $CoreRule) {
+        Remove-Item $CoreRule -Force
+        Write-Step "ok" "Removed core rule"
+    } else {
+        Write-Step "skip" "Core rule not found" "Yellow"
+    }
+
+    # Remove Wukong skills (only known Wukong skills)
+    $WukongSkills = @(
+        "jie.md", "ding.md", "hui.md", "shi.md",
+        "jindouyun.md", "summoning.md", "orchestration.md",
+        "evidence.md"
+    )
+    $SkillsDir = "$ClaudeDir\skills"
+    $RemovedSkills = 0
+    foreach ($Skill in $WukongSkills) {
+        $SkillPath = Join-Path $SkillsDir $Skill
+        if (Test-Path $SkillPath) {
+            Remove-Item $SkillPath -Force
+            $RemovedSkills++
+        }
+    }
+    if ($RemovedSkills -gt 0) {
+        Write-Step "ok" "Removed $RemovedSkills skill files"
+    } else {
+        Write-Step "skip" "No skill files found" "Yellow"
+    }
+
+    # Remove Wukong commands (only known Wukong commands)
+    $WukongCommands = @(
+        "wukong.md", "schedule.md", "neiguan.md"
+    )
+    $CommandsDir = "$ClaudeDir\commands"
+    $RemovedCommands = 0
+    foreach ($Cmd in $WukongCommands) {
+        $CmdPath = Join-Path $CommandsDir $Cmd
+        if (Test-Path $CmdPath) {
+            Remove-Item $CmdPath -Force
+            $RemovedCommands++
+        }
+    }
+    if ($RemovedCommands -gt 0) {
+        Write-Step "ok" "Removed $RemovedCommands command files"
+    } else {
+        Write-Step "skip" "No command files found" "Yellow"
+    }
+
+    # Remove project .wukong directory
+    if (Test-Path $WukongDir) {
+        Remove-Item $WukongDir -Recurse -Force
+        Write-Step "ok" "Removed $WukongDir"
+    } else {
+        Write-Step "skip" "Project .wukong not found" "Yellow"
+    }
+
+    Write-Host ""
+    Write-ColorOutput "[2/3] Removing Global Files" "Blue"
+
+    # Remove global hooks
+    $GlobalHooksDir = Join-Path $GlobalWukongDir "hooks"
+    if (Test-Path $GlobalHooksDir) {
+        Remove-Item $GlobalHooksDir -Recurse -Force
+        Write-Step "ok" "Removed global hooks"
+    } else {
+        Write-Step "skip" "Global hooks not found" "Yellow"
+    }
+
+    # Remove global scheduler
+    $GlobalSchedulerDir = Join-Path $GlobalWukongDir "scheduler"
+    if (Test-Path $GlobalSchedulerDir) {
+        Remove-Item $GlobalSchedulerDir -Recurse -Force
+        Write-Step "ok" "Removed global scheduler"
+    } else {
+        Write-Step "skip" "Global scheduler not found" "Yellow"
+    }
+
+    # Remove global context
+    $GlobalContextDir = Join-Path $GlobalWukongDir "context"
+    if (Test-Path $GlobalContextDir) {
+        Remove-Item $GlobalContextDir -Recurse -Force
+        Write-Step "ok" "Removed global context"
+    } else {
+        Write-Step "skip" "Global context not found" "Yellow"
+    }
+
+    # Remove entire global .wukong if empty
+    if ((Test-Path $GlobalWukongDir) -and ((Get-ChildItem $GlobalWukongDir -Force | Measure-Object).Count -eq 0)) {
+        Remove-Item $GlobalWukongDir -Force
+        Write-Step "ok" "Removed empty $GlobalWukongDir"
+    }
+
+    Write-Host ""
+    Write-ColorOutput "[3/3] Cleaning Hook Registration" "Blue"
+
+    # Remove hook from settings.json
+    $SettingsFile = Join-Path $HOME ".claude\settings.json"
+    if (Test-Path $SettingsFile) {
+        try {
+            $SettingsContent = Get-Content $SettingsFile -Raw
+            if ($SettingsContent -match "hui-extract\.py") {
+                $Settings = $SettingsContent | ConvertFrom-Json -AsHashtable
+
+                if ($Settings.ContainsKey("hooks") -and $Settings["hooks"].ContainsKey("PreCompact")) {
+                    # Filter out Wukong hooks
+                    $FilteredHooks = @()
+                    foreach ($HookEntry in $Settings["hooks"]["PreCompact"]) {
+                        $IsWukongHook = $false
+                        if ($HookEntry -is [hashtable] -and $HookEntry.ContainsKey("hooks")) {
+                            foreach ($Hook in $HookEntry["hooks"]) {
+                                if ($Hook -is [hashtable] -and $Hook.ContainsKey("command")) {
+                                    if ($Hook["command"] -match "hui-extract\.py") {
+                                        $IsWukongHook = $true
+                                        break
+                                    }
+                                }
+                            }
+                        }
+                        if (-not $IsWukongHook) {
+                            $FilteredHooks += $HookEntry
+                        }
+                    }
+                    $Settings["hooks"]["PreCompact"] = $FilteredHooks
+
+                    # Remove empty hooks section
+                    if ($Settings["hooks"]["PreCompact"].Count -eq 0) {
+                        $Settings["hooks"].Remove("PreCompact")
+                    }
+                    if ($Settings["hooks"].Count -eq 0) {
+                        $Settings.Remove("hooks")
+                    }
+
+                    $Settings | ConvertTo-Json -Depth 10 | Set-Content $SettingsFile -Encoding UTF8
+                    Write-Step "ok" "Removed hook registration from settings.json"
+                }
+            } else {
+                Write-Step "skip" "No Wukong hooks in settings.json" "Yellow"
+            }
+        }
+        catch {
+            Write-Step "warn" "Could not clean settings.json - $_" "Yellow"
+        }
+    } else {
+        Write-Step "skip" "settings.json not found" "Yellow"
+    }
+
+    Write-Host ""
+    Write-ColorOutput "Uninstall complete!" "Green"
+    exit 0
+}
+
+# ============================================================
+# Handle ClearState
+# ============================================================
+if ($ClearState) {
+    Write-ColorOutput "Wukong State Cleaner" "Blue"
+    Write-Host ""
+
+    # Determine target directories
+    $ProjectRoot = Get-Location
+    if ([string]::IsNullOrEmpty($TargetDir)) {
+        $TargetDir = $ProjectRoot
+    }
+
+    if ($TargetDir -like "*.claude" -or $TargetDir -like "*.claude\") {
+        $WukongDir = Join-Path (Split-Path $TargetDir -Parent) ".wukong"
+    }
+    else {
+        $WukongDir = Join-Path $TargetDir ".wukong"
+    }
+
+    $StateDirs = @(
+        (Join-Path $WukongDir "notepads"),
+        (Join-Path $WukongDir "plans"),
+        (Join-Path $WukongDir "context\sessions"),
+        (Join-Path $WukongDir "context\current")
+    )
+
+    $ClearedCount = 0
+    foreach ($Dir in $StateDirs) {
+        if (Test-Path $Dir) {
+            $Items = Get-ChildItem $Dir -Force -ErrorAction SilentlyContinue
+            if ($Items) {
+                Remove-Item "$Dir\*" -Recurse -Force -ErrorAction SilentlyContinue
+                Write-Step "ok" "Cleared $Dir"
+                $ClearedCount++
+            } else {
+                Write-Step "skip" "$Dir is already empty" "Yellow"
+            }
+        } else {
+            Write-Step "skip" "$Dir not found" "Yellow"
+        }
+    }
+
+    Write-Host ""
+    if ($ClearedCount -gt 0) {
+        Write-ColorOutput "Cleared $ClearedCount directories!" "Green"
+    } else {
+        Write-ColorOutput "No state to clear." "Yellow"
+    }
+    exit 0
+}
+
+# ============================================================
+# Main Installation
+# ============================================================
 Write-ColorOutput "Wukong Installer" "Blue"
 Write-Host ""
+
+# Check Python availability
+if (-not $PythonCmd) {
+    Write-ColorOutput "Warning: Python not found. Hooks may not work correctly." "Yellow"
+    Write-Host "  Please install Python and ensure it's in your PATH." -ForegroundColor DarkGray
+    Write-Host ""
+} else {
+    Write-Host "Python detected: " -NoNewline
+    Write-ColorOutput $PythonCmd "Green"
+    Write-Host ""
+}
 
 $ProjectRoot = Get-Location
 $SourceDir = ""
@@ -109,9 +407,53 @@ else {
 Write-Host ""
 
 # ============================================================
-# 3. Install project files
+# 3. Handle Clean Install
 # ============================================================
-Write-ColorOutput "[1/3] Project Files" "Blue"
+if ($Clean) {
+    Write-ColorOutput "Clean install - removing existing Wukong files first..." "Yellow"
+    Write-Host ""
+
+    # Remove existing files silently
+    $CoreRule = "$ClaudeDir\rules\00-wukong-core.md"
+    if (Test-Path $CoreRule) {
+        Remove-Item $CoreRule -Force
+    }
+
+    # Remove skills
+    $WukongSkills = @(
+        "jie.md", "ding.md", "hui.md", "shi.md",
+        "jindouyun.md", "summoning.md", "orchestration.md",
+        "evidence.md"
+    )
+    foreach ($Skill in $WukongSkills) {
+        $SkillPath = Join-Path "$ClaudeDir\skills" $Skill
+        if (Test-Path $SkillPath) {
+            Remove-Item $SkillPath -Force
+        }
+    }
+
+    # Remove commands
+    $WukongCommands = @("wukong.md", "schedule.md", "neiguan.md")
+    foreach ($Cmd in $WukongCommands) {
+        $CmdPath = Join-Path "$ClaudeDir\commands" $Cmd
+        if (Test-Path $CmdPath) {
+            Remove-Item $CmdPath -Force
+        }
+    }
+
+    # Remove project .wukong
+    if (Test-Path $WukongDir) {
+        Remove-Item $WukongDir -Recurse -Force
+    }
+
+    Write-Step "ok" "Cleaned existing installation"
+    Write-Host ""
+}
+
+# ============================================================
+# 4. Install project files
+# ============================================================
+Write-ColorOutput "[1/4] Project Files" "Blue"
 
 # Create directory structure
 $Directories = @(
@@ -231,9 +573,9 @@ Global anchors for this project.
 Write-Host ""
 
 # ============================================================
-# 4. Install global hooks
+# 5. Install global hooks
 # ============================================================
-Write-ColorOutput "[2/3] Global Hooks" "Blue"
+Write-ColorOutput "[2/4] Global Hooks" "Blue"
 
 $GlobalWukongDir = Join-Path $HOME ".wukong"
 $GlobalHooksDir = Join-Path $GlobalWukongDir "hooks"
@@ -289,9 +631,9 @@ if (Test-Path $ContextSource) {
 Write-Host ""
 
 # ============================================================
-# 5. Register hooks to Claude Code
+# 6. Register hooks to Claude Code
 # ============================================================
-Write-ColorOutput "[3/3] Hook Registration" "Blue"
+Write-ColorOutput "[3/4] Hook Registration" "Blue"
 
 $SettingsFile = Join-Path $HOME ".claude\settings.json"
 $AlreadyRegistered = $false
@@ -321,8 +663,9 @@ else {
             New-Item -ItemType Directory -Path $ClaudeHome -Force | Out-Null
         }
 
-        # Hook configuration - use forward slashes for cross-platform compatibility
-        $HookCommand = "python3 ~/.wukong/hooks/hui-extract.py"
+        # Hook configuration - use detected Python command, fallback to python3
+        $HookPython = if ($PythonCmd) { $PythonCmd } else { "python3" }
+        $HookCommand = "$HookPython ~/.wukong/hooks/hui-extract.py"
 
         $NewHook = @{
             matcher = "auto"
@@ -384,6 +727,7 @@ else {
                 Write-Step "error" "Failed to update settings.json - $_" "Red"
                 Write-Host ""
                 Write-ColorOutput "  Please manually add this to ~\.claude\settings.json:" "Yellow"
+                $ManualHookPython = if ($PythonCmd) { $PythonCmd } else { "python3" }
                 Write-Host @"
 
   {
@@ -392,7 +736,7 @@ else {
         "matcher": "auto",
         "hooks": [{
           "type": "command",
-          "command": "python3 ~/.wukong/hooks/hui-extract.py",
+          "command": "$ManualHookPython ~/.wukong/hooks/hui-extract.py",
           "timeout": 30
         }]
       }]
@@ -406,6 +750,7 @@ else {
         Write-Host "  Skipped hook registration" -ForegroundColor DarkGray
         Write-Host ""
         Write-ColorOutput "  To enable hooks manually, add this to ~\.claude\settings.json:" "Yellow"
+        $ManualHookPython = if ($PythonCmd) { $PythonCmd } else { "python3" }
         Write-Host @"
 
   {
@@ -414,7 +759,7 @@ else {
         "matcher": "auto",
         "hooks": [{
           "type": "command",
-          "command": "python3 ~/.wukong/hooks/hui-extract.py",
+          "command": "$ManualHookPython ~/.wukong/hooks/hui-extract.py",
           "timeout": 30
         }]
       }]
@@ -424,8 +769,43 @@ else {
     }
 }
 
+Write-Host ""
+
 # ============================================================
-# 6. Cleanup and finish
+# 7. Verify Installation
+# ============================================================
+Write-ColorOutput "[4/4] Verifying Installation" "Blue"
+
+$VerificationItems = @(
+    @{ Path = "$ClaudeDir\rules\00-wukong-core.md"; Name = "Core rule" },
+    @{ Path = "$ClaudeDir\skills"; Name = "Skills directory" },
+    @{ Path = "$ClaudeDir\commands"; Name = "Commands directory" },
+    @{ Path = "$WukongDir\scheduler"; Name = "Scheduler module" },
+    @{ Path = "$WukongDir\context"; Name = "Context module" },
+    @{ Path = "$GlobalWukongDir\hooks"; Name = "Global hooks" },
+    @{ Path = "$GlobalWukongDir\scheduler"; Name = "Global scheduler" },
+    @{ Path = "$GlobalWukongDir\context"; Name = "Global context" }
+)
+
+$AllOk = $true
+$VerifiedCount = 0
+foreach ($Item in $VerificationItems) {
+    if (Test-Path $Item.Path) {
+        Write-Step "ok" $Item.Name
+        $VerifiedCount++
+    } else {
+        Write-Step "fail" $Item.Name "Red"
+        $AllOk = $false
+    }
+}
+
+if (-not $AllOk) {
+    Write-Host ""
+    Write-ColorOutput "Warning: Some components may not have installed correctly." "Yellow"
+}
+
+# ============================================================
+# 8. Cleanup and finish
 # ============================================================
 
 # Cleanup temp directory if we downloaded from GitHub
@@ -434,7 +814,7 @@ if ($TempDir -and (Test-Path $TempDir)) {
 }
 
 Write-Host ""
-Write-ColorOutput "Done!" "Green"
+Write-ColorOutput "Done! ($VerifiedCount/$($VerificationItems.Count) components verified)" "Green"
 Write-Host ""
 Write-Host "Installed to:"
 Write-Host "  $ClaudeDir\rules\     " -NoNewline -ForegroundColor DarkGray
@@ -451,6 +831,13 @@ Write-Host "  ~\.wukong\scheduler\  " -NoNewline -ForegroundColor DarkGray
 Write-Host "Scheduler module"
 Write-Host "  ~\.wukong\context\    " -NoNewline -ForegroundColor DarkGray
 Write-Host "Context module"
+Write-Host ""
+Write-Host "Python command: " -NoNewline
+if ($PythonCmd) {
+    Write-ColorOutput $PythonCmd "Green"
+} else {
+    Write-ColorOutput "Not found (hooks may not work)" "Yellow"
+}
 Write-Host ""
 Write-Host "Start Claude Code and say: " -NoNewline
 Write-ColorOutput "/wukong" "Green"

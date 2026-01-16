@@ -26,11 +26,11 @@ import sys
 import os
 
 # 发现链：用户级 → 项目级
-scheduler_paths = [
-    os.path.expanduser("~/.wukong/scheduler"),  # 用户级 (优先)
-    ".wukong/scheduler",                         # 项目级 (fallback)
+runtime_paths = [
+    os.path.expanduser("~/.wukong/runtime"),  # 用户级 (优先)
+    ".wukong/runtime",                         # 项目级 (fallback)
 ]
-for path in scheduler_paths:
+for path in runtime_paths:
     if os.path.isdir(path):
         sys.path.insert(0, path)
         break
@@ -125,7 +125,7 @@ phases = scheduler.plan_track(track, task_description)
 
 2. **运行调度分析**
    ```python
-   # 使用上面的路径发现机制导入 scheduler
+   # 使用上面的路径发现机制导入 runtime scheduler
    from scheduler import WukongScheduler, TrackType
 
    scheduler = WukongScheduler()
@@ -148,7 +148,7 @@ phases = scheduler.plan_track(track, task_description)
 
 ## Error Handling
 
-- 如果调度器模块不存在，提示用户检查 `~/.wukong/scheduler/` 或 `.wukong/scheduler/` 目录
+- 如果调度器模块不存在，提示用户检查 `~/.wukong/runtime/` 或 `.wukong/runtime/` 目录
 - 如果任务描述为空，提示用户提供任务
 - 如果检测到复杂冲突，建议拆分任务
 

@@ -6,7 +6,7 @@
 
 ## Cost-Based Routing (成本路由)
 
-> 成本路由配置由 Scheduler 管理，详见 `~/.wukong/scheduler/scheduler.py` 中的 `AVATAR_CONFIG`
+> 成本路由配置由 Scheduler 管理，详见 `~/.wukong/runtime/scheduler.py` 中的 `AVATAR_CONFIG`
 >
 > 速查: CHEAP(眼/耳/鼻) 10+并发后台 | MEDIUM(舌) 2-3并发 | EXPENSIVE(身/意) 1阻塞
 

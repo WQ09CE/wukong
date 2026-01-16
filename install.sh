@@ -9,12 +9,348 @@ RED='\033[0;31m'
 DIM='\033[2m'
 NC='\033[0m'
 
-echo -e "${BLUE}Wukong Installer${NC}"
-echo ""
-
 PROJECT_ROOT=$(pwd)
 SOURCE_DIR=""
 GLOBAL_WUKONG_DIR="$HOME/.wukong"
+GLOBAL_CLAUDE_DIR="$HOME/.claude"
+
+# ============================================================
+# Command Line Options
+# ============================================================
+CLEAN_MODE=false
+UNINSTALL_MODE=false
+FORCE_MODE=false
+CLEAR_STATE=false
+
+show_help() {
+    echo -e "${BLUE}Wukong Installer${NC}"
+    echo ""
+    echo "Usage: ./install.sh [OPTIONS] [TARGET_DIR]"
+    echo ""
+    echo "Options:"
+    echo "  --help, -h        Show this help message"
+    echo "  --clean, -c       Clean old version before installing"
+    echo "  --uninstall, -u   Uninstall Wukong (remove installed files)"
+    echo "  --force, -f       Skip confirmation prompts"
+    echo "  --clear-state     Also clear runtime state files (with --clean or --uninstall)"
+    echo ""
+    echo "Examples:"
+    echo "  ./install.sh              Normal install (overwrite)"
+    echo "  ./install.sh --clean      Clean old version, then install"
+    echo "  ./install.sh --uninstall  Remove Wukong installation"
+    echo "  ./install.sh /path/to/project  Install to specific directory"
+    echo ""
+    echo "User data preserved (never deleted):"
+    echo "  ~/.wukong/notepads/           User notes"
+    echo "  ~/.wukong/plans/              User plans"
+    echo "  ~/.wukong/context/sessions/   Session archives"
+    echo "  ~/.wukong/context/anchors.md  User anchors"
+    echo "  ~/.wukong/anchors/            Anchor files"
+    echo "  ~/.claude/settings.json       Claude settings"
+    echo "  ~/.claude/settings.local.json Local settings"
+}
+
+# Parse command line arguments
+TARGET_DIR=""
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --help|-h)
+            show_help
+            exit 0
+            ;;
+        --clean|-c)
+            CLEAN_MODE=true
+            shift
+            ;;
+        --uninstall|-u)
+            UNINSTALL_MODE=true
+            shift
+            ;;
+        --force|-f)
+            FORCE_MODE=true
+            shift
+            ;;
+        --clear-state)
+            CLEAR_STATE=true
+            shift
+            ;;
+        -*)
+            echo -e "${RED}Unknown option: $1${NC}"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+        *)
+            TARGET_DIR="$1"
+            shift
+            ;;
+    esac
+done
+
+# ============================================================
+# Detection and Cleaning Functions
+# ============================================================
+
+detect_old_version() {
+    # Check for any installed Wukong components
+    if [ -f "$GLOBAL_WUKONG_DIR/runtime/cli.py" ] || \
+       [ -d "$GLOBAL_CLAUDE_DIR/skills" ] && ls "$GLOBAL_CLAUDE_DIR"/skills/*.md 1>/dev/null 2>&1; then
+        return 0  # Found old version
+    fi
+    return 1  # No old version
+}
+
+# Wukong-specific files (only these will be cleaned)
+WUKONG_SKILLS=(
+    "architect.md"
+    "code-reviewer.md"
+    "ding.md"
+    "evidence.md"
+    "explorer.md"
+    "hui.md"
+    "implementer.md"
+    "jie.md"
+    "jindouyun.md"
+    "orchestration.md"
+    "requirements-analyst.md"
+    "shi.md"
+    "summoning.md"
+    "tester.md"
+)
+
+WUKONG_COMMANDS=(
+    "wukong.md"
+    "schedule.md"
+    "neiguan.md"
+    "longimage.md"
+)
+
+WUKONG_AGENTS=(
+    "eye.md"
+    "ear.md"
+    "nose.md"
+    "tongue.md"
+    "body.md"
+    "mind.md"
+)
+
+show_clean_preview() {
+    echo -e "${YELLOW}The following Wukong files will be REMOVED:${NC}"
+    echo ""
+    echo "  Skills (${#WUKONG_SKILLS[@]} files):"
+    for skill in "${WUKONG_SKILLS[@]}"; do
+        echo "    ~/.claude/skills/$skill"
+    done
+    echo ""
+    echo "  Commands (${#WUKONG_COMMANDS[@]} files):"
+    for cmd in "${WUKONG_COMMANDS[@]}"; do
+        echo "    ~/.claude/commands/$cmd"
+    done
+    echo ""
+    echo "  Agents (${#WUKONG_AGENTS[@]} files):"
+    for agent in "${WUKONG_AGENTS[@]}"; do
+        echo "    ~/.claude/agents/$agent"
+    done
+    echo ""
+    echo "  Rules:"
+    echo "    ~/.claude/rules/00-wukong*.md"
+    echo ""
+    echo "  Modules:"
+    echo "    ~/.wukong/hooks/*.py"
+    echo "    ~/.wukong/runtime/ (Python + templates + schema)"
+    echo "    ~/.wukong/context/*.py"
+    echo "    ~/.wukong/context/templates/"
+    echo "    ~/.wukong/templates/"
+    if [ "$CLEAR_STATE" = true ]; then
+        echo ""
+        echo -e "${RED}  Runtime state files (--clear-state):${NC}"
+        echo "    ~/.wukong/state.json"
+        echo "    ~/.wukong/taskgraph.json"
+        echo "    ~/.wukong/events.jsonl"
+        echo "    ~/.wukong/artifacts/"
+    fi
+    echo ""
+    echo -e "${GREEN}The following will be PRESERVED:${NC}"
+    echo "  ~/.wukong/notepads/           (user notes)"
+    echo "  ~/.wukong/plans/              (user plans)"
+    echo "  ~/.wukong/context/sessions/   (session archives)"
+    echo "  ~/.wukong/context/anchors.md  (user anchors)"
+    echo "  ~/.wukong/anchors/            (anchor files)"
+    echo "  ~/.claude/settings.json       (Claude settings)"
+    echo "  ~/.claude/settings.local.json (local settings)"
+    echo "  ~/.claude/skills/ (non-Wukong files)"
+    echo "  ~/.claude/commands/ (non-Wukong files)"
+    echo ""
+}
+
+clean_old_version() {
+    echo -e "${BLUE}Cleaning old Wukong installation...${NC}"
+    echo ""
+
+    # Clean skills (only Wukong-specific files)
+    if [ -d "$GLOBAL_CLAUDE_DIR/skills" ]; then
+        local skill_count=0
+        for skill in "${WUKONG_SKILLS[@]}"; do
+            if [ -f "$GLOBAL_CLAUDE_DIR/skills/$skill" ]; then
+                rm -f "$GLOBAL_CLAUDE_DIR/skills/$skill"
+                ((skill_count++))
+            fi
+        done
+        echo -e "  ${GREEN}[ok]${NC} Removed $skill_count Wukong skill files"
+    fi
+
+    # Clean agents (only Wukong-specific files)
+    if [ -d "$GLOBAL_CLAUDE_DIR/agents" ]; then
+        local agent_count=0
+        for agent in "${WUKONG_AGENTS[@]}"; do
+            if [ -f "$GLOBAL_CLAUDE_DIR/agents/$agent" ]; then
+                rm -f "$GLOBAL_CLAUDE_DIR/agents/$agent"
+                ((agent_count++))
+            fi
+        done
+        echo -e "  ${GREEN}[ok]${NC} Removed $agent_count Wukong agent files"
+    fi
+
+    # Clean rules (wukong-related)
+    if [ -d "$GLOBAL_CLAUDE_DIR/rules" ]; then
+        rm -f "$GLOBAL_CLAUDE_DIR"/rules/00-wukong*.md 2>/dev/null || true
+        echo -e "  ${GREEN}[ok]${NC} Cleaned ~/.claude/rules/00-wukong*.md"
+    fi
+
+    # Clean commands (only Wukong-specific files)
+    if [ -d "$GLOBAL_CLAUDE_DIR/commands" ]; then
+        local cmd_count=0
+        for cmd in "${WUKONG_COMMANDS[@]}"; do
+            if [ -f "$GLOBAL_CLAUDE_DIR/commands/$cmd" ]; then
+                rm -f "$GLOBAL_CLAUDE_DIR/commands/$cmd"
+                ((cmd_count++))
+            fi
+        done
+        echo -e "  ${GREEN}[ok]${NC} Removed $cmd_count Wukong command files"
+    fi
+
+    # Clean hooks
+    if [ -d "$GLOBAL_WUKONG_DIR/hooks" ]; then
+        rm -f "$GLOBAL_WUKONG_DIR"/hooks/*.py 2>/dev/null || true
+        echo -e "  ${GREEN}[ok]${NC} Cleaned ~/.wukong/hooks/*.py"
+    fi
+
+    # Clean runtime module
+    if [ -d "$GLOBAL_WUKONG_DIR/runtime" ]; then
+        rm -f "$GLOBAL_WUKONG_DIR"/runtime/*.py 2>/dev/null || true
+        rm -rf "$GLOBAL_WUKONG_DIR"/runtime/templates/ 2>/dev/null || true
+        rm -rf "$GLOBAL_WUKONG_DIR"/runtime/schema/ 2>/dev/null || true
+        echo -e "  ${GREEN}[ok]${NC} Cleaned ~/.wukong/runtime/"
+    fi
+
+    # Clean context modules (preserve user data)
+    if [ -d "$GLOBAL_WUKONG_DIR/context" ]; then
+        rm -f "$GLOBAL_WUKONG_DIR"/context/*.py 2>/dev/null || true
+        rm -rf "$GLOBAL_WUKONG_DIR"/context/templates/ 2>/dev/null || true
+        # Note: anchors.md and sessions/ are preserved
+        echo -e "  ${GREEN}[ok]${NC} Cleaned ~/.wukong/context/ (preserved anchors & sessions)"
+    fi
+
+    # Clean templates
+    if [ -d "$GLOBAL_WUKONG_DIR/templates" ]; then
+        rm -rf "$GLOBAL_WUKONG_DIR/templates" 2>/dev/null || true
+        echo -e "  ${GREEN}[ok]${NC} Cleaned ~/.wukong/templates/"
+    fi
+
+    # Optional: Clear runtime state
+    if [ "$CLEAR_STATE" = true ]; then
+        echo ""
+        echo -e "${YELLOW}Clearing runtime state...${NC}"
+        rm -f "$GLOBAL_WUKONG_DIR/state.json" 2>/dev/null || true
+        rm -f "$GLOBAL_WUKONG_DIR/taskgraph.json" 2>/dev/null || true
+        rm -f "$GLOBAL_WUKONG_DIR/events.jsonl" 2>/dev/null || true
+        rm -rf "$GLOBAL_WUKONG_DIR/artifacts/" 2>/dev/null || true
+        echo -e "  ${GREEN}[ok]${NC} Cleared runtime state files"
+    fi
+
+    echo ""
+    echo -e "${GREEN}Old version cleaned.${NC}"
+}
+
+do_uninstall() {
+    echo -e "${BLUE}Wukong Uninstaller${NC}"
+    echo ""
+
+    if ! detect_old_version; then
+        echo -e "${YELLOW}No Wukong installation detected.${NC}"
+        exit 0
+    fi
+
+    show_clean_preview
+
+    if [ "$FORCE_MODE" != true ]; then
+        read -p "Continue with uninstall? [y/N] " -r REPLY
+        echo ""
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo "Uninstall cancelled."
+            exit 0
+        fi
+    fi
+
+    clean_old_version
+
+    echo ""
+    echo -e "${GREEN}Wukong has been uninstalled.${NC}"
+    echo ""
+    echo "User data preserved in:"
+    echo -e "  ${DIM}~/.wukong/notepads/${NC}"
+    echo -e "  ${DIM}~/.wukong/plans/${NC}"
+    echo -e "  ${DIM}~/.wukong/context/sessions/${NC}"
+    echo -e "  ${DIM}~/.wukong/context/anchors.md${NC}"
+    echo ""
+    echo "To completely remove all data, manually delete:"
+    echo -e "  ${DIM}rm -rf ~/.wukong${NC}"
+    exit 0
+}
+
+# ============================================================
+# Handle Uninstall Mode
+# ============================================================
+if [ "$UNINSTALL_MODE" = true ]; then
+    do_uninstall
+fi
+
+# ============================================================
+# Main Installation
+# ============================================================
+echo -e "${BLUE}Wukong Installer${NC}"
+echo ""
+
+# Handle Clean Mode
+if [ "$CLEAN_MODE" = true ]; then
+    if detect_old_version; then
+        show_clean_preview
+
+        if [ "$FORCE_MODE" != true ]; then
+            read -p "Clean old version before installing? [y/N] " -r REPLY
+            echo ""
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                echo "Clean cancelled. Proceeding with normal install..."
+                echo ""
+            else
+                clean_old_version
+                echo ""
+            fi
+        else
+            clean_old_version
+            echo ""
+        fi
+    else
+        echo -e "${DIM}No old version detected, skipping clean.${NC}"
+        echo ""
+    fi
+fi
+
+# Detect old version and warn (if not already cleaning)
+if [ "$CLEAN_MODE" != true ] && detect_old_version; then
+    echo -e "${YELLOW}Existing Wukong installation detected.${NC}"
+    echo "Use --clean to remove old files before installing."
+    echo ""
+fi
 
 # ============================================================
 # 1. 确定源目录
@@ -48,8 +384,6 @@ fi
 # ============================================================
 # 2. 确定目标目录
 # ============================================================
-TARGET_DIR="$1"
-
 if [ -z "$TARGET_DIR" ]; then
     echo -e "Installing to current directory: ${GREEN}$PROJECT_ROOT${NC}"
     TARGET_DIR="$PROJECT_ROOT"
@@ -75,6 +409,7 @@ echo -e "${BLUE}[1/3] Project Files${NC}"
 mkdir -p "$CLAUDE_DIR/rules"
 mkdir -p "$CLAUDE_DIR/commands"
 mkdir -p "$CLAUDE_DIR/skills"
+mkdir -p "$CLAUDE_DIR/agents"
 mkdir -p "$WUKONG_DIR/notepads"
 mkdir -p "$WUKONG_DIR/plans"
 mkdir -p "$WUKONG_DIR/context/current"
@@ -98,6 +433,13 @@ if [ -d "$SOURCE_DIR/skills" ] && ls "$SOURCE_DIR"/skills/*.md 1>/dev/null 2>&1;
     echo -e "  ${GREEN}[ok]${NC} Skills ($SKILL_COUNT files)"
 fi
 
+# 复制 agents (六根分身定义)
+if [ -d "$SOURCE_DIR/agents" ] && ls "$SOURCE_DIR"/agents/*.md 1>/dev/null 2>&1; then
+    cp "$SOURCE_DIR"/agents/*.md "$CLAUDE_DIR/agents/"
+    AGENT_COUNT=$(ls -1 "$SOURCE_DIR"/agents/*.md 2>/dev/null | wc -l | tr -d ' ')
+    echo -e "  ${GREEN}[ok]${NC} Agents ($AGENT_COUNT files)"
+fi
+
 # 复制模板
 if [ -d "$SOURCE_DIR/templates" ]; then
     mkdir -p "$WUKONG_DIR/templates"
@@ -112,18 +454,46 @@ if [ -d "$SOURCE_DIR/context/templates" ]; then
     echo -e "  ${GREEN}[ok]${NC} Context templates"
 fi
 
-# 复制调度器模块 (排除测试文件)
-if [ -d "$SOURCE_DIR/scheduler" ]; then
-    mkdir -p "$WUKONG_DIR/scheduler"
-    # 排除 test_*.py 和 example_*.py
-    find "$SOURCE_DIR/scheduler" -maxdepth 1 -name "*.py" ! -name "test_*.py" ! -name "example_*.py" -exec cp {} "$WUKONG_DIR/scheduler/" \;
-    SCHED_COUNT=$(find "$SOURCE_DIR/scheduler" -maxdepth 1 -name "*.py" ! -name "test_*.py" ! -name "example_*.py" | wc -l | tr -d ' ')
-    echo -e "  ${GREEN}[ok]${NC} Scheduler ($SCHED_COUNT files) → project"
+# 复制运行时模块 (排除测试文件)
+if [ -d "$SOURCE_DIR/runtime" ]; then
+    mkdir -p "$WUKONG_DIR/runtime"
+    # 复制 Python 文件 (排除 test_*.py 和 example_*.py)
+    find "$SOURCE_DIR/runtime" -maxdepth 1 -name "*.py" ! -name "test_*.py" ! -name "example_*.py" -exec cp {} "$WUKONG_DIR/runtime/" \;
+    RUNTIME_COUNT=$(find "$SOURCE_DIR/runtime" -maxdepth 1 -name "*.py" ! -name "test_*.py" ! -name "example_*.py" | wc -l | tr -d ' ')
+    echo -e "  ${GREEN}[ok]${NC} Runtime ($RUNTIME_COUNT files) → project"
 
-    # 同时安装到全局 ~/.wukong/scheduler/ (用户级，优先发现)
-    mkdir -p "$GLOBAL_WUKONG_DIR/scheduler"
-    find "$SOURCE_DIR/scheduler" -maxdepth 1 -name "*.py" ! -name "test_*.py" ! -name "example_*.py" -exec cp {} "$GLOBAL_WUKONG_DIR/scheduler/" \;
-    echo -e "  ${GREEN}[ok]${NC} Scheduler ($SCHED_COUNT files) → global"
+    # 复制模板目录
+    if [ -d "$SOURCE_DIR/runtime/templates" ]; then
+        mkdir -p "$WUKONG_DIR/runtime/templates"
+        cp -R "$SOURCE_DIR"/runtime/templates/. "$WUKONG_DIR/runtime/templates/"
+        echo -e "  ${GREEN}[ok]${NC} Runtime templates → project"
+    fi
+
+    # 复制 schema 目录
+    if [ -d "$SOURCE_DIR/runtime/schema" ]; then
+        mkdir -p "$WUKONG_DIR/runtime/schema"
+        cp -R "$SOURCE_DIR"/runtime/schema/. "$WUKONG_DIR/runtime/schema/"
+        echo -e "  ${GREEN}[ok]${NC} Runtime schema → project"
+    fi
+
+    # 同时安装到全局 ~/.wukong/runtime/ (用户级，优先发现)
+    mkdir -p "$GLOBAL_WUKONG_DIR/runtime"
+    find "$SOURCE_DIR/runtime" -maxdepth 1 -name "*.py" ! -name "test_*.py" ! -name "example_*.py" -exec cp {} "$GLOBAL_WUKONG_DIR/runtime/" \;
+    echo -e "  ${GREEN}[ok]${NC} Runtime ($RUNTIME_COUNT files) → global"
+
+    # 复制模板目录到全局
+    if [ -d "$SOURCE_DIR/runtime/templates" ]; then
+        mkdir -p "$GLOBAL_WUKONG_DIR/runtime/templates"
+        cp -R "$SOURCE_DIR"/runtime/templates/. "$GLOBAL_WUKONG_DIR/runtime/templates/"
+        echo -e "  ${GREEN}[ok]${NC} Runtime templates → global"
+    fi
+
+    # 复制 schema 目录到全局
+    if [ -d "$SOURCE_DIR/runtime/schema" ]; then
+        mkdir -p "$GLOBAL_WUKONG_DIR/runtime/schema"
+        cp -R "$SOURCE_DIR"/runtime/schema/. "$GLOBAL_WUKONG_DIR/runtime/schema/"
+        echo -e "  ${GREEN}[ok]${NC} Runtime schema → global"
+    fi
 fi
 
 # 复制上下文优化模块 (排除测试和示例文件)
@@ -169,7 +539,6 @@ echo ""
 # ============================================================
 echo -e "${BLUE}[2/3] Global Components${NC}"
 
-GLOBAL_CLAUDE_DIR="$HOME/.claude"
 GLOBAL_HOOKS_DIR="$GLOBAL_WUKONG_DIR/hooks"
 
 mkdir -p "$GLOBAL_HOOKS_DIR"
@@ -346,5 +715,6 @@ echo -e "  ${DIM}$CLAUDE_DIR/skills/${NC}    Avatar skills"
 echo -e "  ${DIM}$CLAUDE_DIR/commands/${NC}  Commands"
 echo -e "  ${DIM}$WUKONG_DIR/${NC}           Work data"
 echo -e "  ${DIM}~/.wukong/hooks/${NC}       Global hooks"
+echo -e "  ${DIM}~/.wukong/runtime/${NC}     Runtime CLI"
 echo ""
 echo -e "Start Claude Code and say: ${GREEN}/wukong${NC}"

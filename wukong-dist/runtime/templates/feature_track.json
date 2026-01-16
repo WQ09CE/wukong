@@ -1,0 +1,206 @@
+{
+  "$schema": "../schema/taskgraph.schema.json",
+  "id": "tg_feature_template",
+  "title": "Feature Track Template",
+  "track": "feature",
+  "status": "created",
+  "nodes": [
+    {
+      "id": "ear_analyze",
+      "title": "需求分析",
+      "role": "ear",
+      "executor": {
+        "type": "subagent",
+        "name": "耳分身"
+      },
+      "inputs": {
+        "files": [],
+        "context_refs": [],
+        "upstream_outputs": []
+      },
+      "constraints": {
+        "allowed_tools": ["Read", "Glob", "Grep", "WebSearch", "WebFetch"],
+        "time_budget_sec": 120,
+        "cost_tier": "cheap",
+        "background": "optional"
+      },
+      "quality": {
+        "evidence_level_required": "L1",
+        "checklist": [
+          "需求明确",
+          "边界条件识别",
+          "依赖关系梳理"
+        ]
+      },
+      "status": "pending",
+      "outputs": {}
+    },
+    {
+      "id": "eye_explore",
+      "title": "探索现有代码",
+      "role": "eye",
+      "executor": {
+        "type": "subagent",
+        "name": "眼分身"
+      },
+      "inputs": {
+        "files": [],
+        "context_refs": [],
+        "upstream_outputs": []
+      },
+      "constraints": {
+        "allowed_tools": ["Read", "Glob", "Grep", "Bash"],
+        "time_budget_sec": 120,
+        "cost_tier": "cheap",
+        "background": "required"
+      },
+      "quality": {
+        "evidence_level_required": "L1",
+        "checklist": [
+          "相关代码定位",
+          "扩展点识别",
+          "现有模式理解"
+        ]
+      },
+      "status": "pending",
+      "outputs": {}
+    },
+    {
+      "id": "mind_design",
+      "title": "架构设计",
+      "role": "mind",
+      "executor": {
+        "type": "subagent",
+        "name": "意分身"
+      },
+      "inputs": {
+        "files": [],
+        "context_refs": [],
+        "upstream_outputs": ["ear_analyze.summary", "eye_explore.summary"]
+      },
+      "constraints": {
+        "allowed_tools": ["Read", "Glob", "Grep", "Write"],
+        "time_budget_sec": 180,
+        "cost_tier": "expensive",
+        "background": "forbidden"
+      },
+      "quality": {
+        "evidence_level_required": "L1",
+        "checklist": [
+          "设计方案完整",
+          "接口定义清晰",
+          "与现有架构兼容"
+        ]
+      },
+      "status": "pending",
+      "outputs": {}
+    },
+    {
+      "id": "body_implement",
+      "title": "功能实现",
+      "role": "body",
+      "executor": {
+        "type": "subagent",
+        "name": "斗战胜佛"
+      },
+      "inputs": {
+        "files": [],
+        "context_refs": [],
+        "upstream_outputs": ["mind_design.summary"]
+      },
+      "constraints": {
+        "allowed_tools": ["Read", "Write", "Edit", "Glob", "Grep", "Bash"],
+        "time_budget_sec": 600,
+        "cost_tier": "expensive",
+        "background": "forbidden"
+      },
+      "quality": {
+        "evidence_level_required": "L2",
+        "checklist": [
+          "功能实现完成",
+          "代码符合设计",
+          "无编译错误"
+        ]
+      },
+      "status": "pending",
+      "outputs": {}
+    },
+    {
+      "id": "tongue_test",
+      "title": "测试验证",
+      "role": "tongue",
+      "executor": {
+        "type": "subagent",
+        "name": "舌分身"
+      },
+      "inputs": {
+        "files": [],
+        "context_refs": [],
+        "upstream_outputs": ["body_implement.summary"]
+      },
+      "constraints": {
+        "allowed_tools": ["Read", "Write", "Bash", "Glob"],
+        "time_budget_sec": 180,
+        "cost_tier": "medium",
+        "background": "optional"
+      },
+      "quality": {
+        "evidence_level_required": "L2",
+        "checklist": [
+          "单元测试通过",
+          "集成测试通过",
+          "边界条件覆盖"
+        ]
+      },
+      "status": "pending",
+      "outputs": {}
+    },
+    {
+      "id": "nose_review",
+      "title": "代码审查",
+      "role": "nose",
+      "executor": {
+        "type": "subagent",
+        "name": "鼻分身"
+      },
+      "inputs": {
+        "files": [],
+        "context_refs": [],
+        "upstream_outputs": ["body_implement.summary"]
+      },
+      "constraints": {
+        "allowed_tools": ["Read", "Glob", "Grep"],
+        "time_budget_sec": 120,
+        "cost_tier": "cheap",
+        "background": "required"
+      },
+      "quality": {
+        "evidence_level_required": "L1",
+        "checklist": [
+          "代码规范检查",
+          "安全问题扫描",
+          "性能问题识别"
+        ]
+      },
+      "status": "pending",
+      "outputs": {}
+    }
+  ],
+  "edges": [
+    { "from": "ear_analyze", "to": "mind_design", "condition": "on_success" },
+    { "from": "eye_explore", "to": "mind_design", "condition": "on_success" },
+    { "from": "mind_design", "to": "body_implement", "condition": "on_success" },
+    { "from": "body_implement", "to": "tongue_test", "condition": "on_success" },
+    { "from": "body_implement", "to": "nose_review", "condition": "on_success" }
+  ],
+  "created_at": "2024-01-01T00:00:00Z",
+  "metadata": {
+    "description": "Feature track: [Ear + Eye] (并行) → Mind (设计) → Body (实现) → [Tongue + Nose] (并行)",
+    "phases": [
+      { "phase": 0, "nodes": ["ear_analyze", "eye_explore"], "parallel": true },
+      { "phase": 1, "nodes": ["mind_design"], "parallel": false },
+      { "phase": 2, "nodes": ["body_implement"], "parallel": false },
+      { "phase": 3, "nodes": ["tongue_test", "nose_review"], "parallel": true }
+    ]
+  }
+}

@@ -1,0 +1,143 @@
+{
+  "$schema": "../schema/taskgraph.schema.json",
+  "id": "tg_fix_template",
+  "title": "Fix Track Template",
+  "track": "fix",
+  "status": "created",
+  "nodes": [
+    {
+      "id": "eye_explore",
+      "title": "探索问题",
+      "role": "eye",
+      "executor": {
+        "type": "subagent",
+        "name": "眼分身"
+      },
+      "inputs": {
+        "files": [],
+        "context_refs": [],
+        "upstream_outputs": []
+      },
+      "constraints": {
+        "allowed_tools": ["Read", "Glob", "Grep", "Bash", "WebSearch", "WebFetch"],
+        "time_budget_sec": 120,
+        "cost_tier": "cheap",
+        "background": "required"
+      },
+      "quality": {
+        "evidence_level_required": "L1",
+        "checklist": [
+          "定位问题根因",
+          "识别相关文件",
+          "记录问题复现步骤"
+        ]
+      },
+      "status": "pending",
+      "outputs": {}
+    },
+    {
+      "id": "nose_analyze",
+      "title": "分析代码",
+      "role": "nose",
+      "executor": {
+        "type": "subagent",
+        "name": "鼻分身"
+      },
+      "inputs": {
+        "files": [],
+        "context_refs": [],
+        "upstream_outputs": ["eye_explore.summary"]
+      },
+      "constraints": {
+        "allowed_tools": ["Read", "Glob", "Grep"],
+        "time_budget_sec": 60,
+        "cost_tier": "cheap",
+        "background": "required"
+      },
+      "quality": {
+        "evidence_level_required": "L1",
+        "checklist": [
+          "审查相关代码",
+          "识别潜在副作用"
+        ]
+      },
+      "status": "pending",
+      "outputs": {}
+    },
+    {
+      "id": "body_implement",
+      "title": "实现修复",
+      "role": "body",
+      "executor": {
+        "type": "subagent",
+        "name": "斗战胜佛"
+      },
+      "inputs": {
+        "files": [],
+        "context_refs": [],
+        "upstream_outputs": ["eye_explore.summary", "nose_analyze.summary"]
+      },
+      "constraints": {
+        "allowed_tools": ["Read", "Write", "Edit", "Glob", "Grep", "Bash"],
+        "time_budget_sec": 300,
+        "cost_tier": "expensive",
+        "background": "forbidden"
+      },
+      "quality": {
+        "evidence_level_required": "L2",
+        "checklist": [
+          "代码修改完成",
+          "遵循现有代码风格",
+          "无语法错误"
+        ]
+      },
+      "status": "pending",
+      "outputs": {}
+    },
+    {
+      "id": "tongue_verify",
+      "title": "验证测试",
+      "role": "tongue",
+      "executor": {
+        "type": "subagent",
+        "name": "舌分身"
+      },
+      "inputs": {
+        "files": [],
+        "context_refs": [],
+        "upstream_outputs": ["body_implement.summary"]
+      },
+      "constraints": {
+        "allowed_tools": ["Read", "Bash", "Glob"],
+        "time_budget_sec": 180,
+        "cost_tier": "medium",
+        "background": "optional"
+      },
+      "quality": {
+        "evidence_level_required": "L2",
+        "checklist": [
+          "测试通过",
+          "问题已修复",
+          "无回归"
+        ]
+      },
+      "status": "pending",
+      "outputs": {}
+    }
+  ],
+  "edges": [
+    { "from": "eye_explore", "to": "nose_analyze", "condition": "on_success" },
+    { "from": "eye_explore", "to": "body_implement", "condition": "on_success" },
+    { "from": "nose_analyze", "to": "body_implement", "condition": "on_success" },
+    { "from": "body_implement", "to": "tongue_verify", "condition": "on_success" }
+  ],
+  "created_at": "2024-01-01T00:00:00Z",
+  "metadata": {
+    "description": "Fix track: Eye (探索问题) + Nose (分析代码) → Body (实现修复) → Tongue (验证测试)",
+    "phases": [
+      { "phase": 0, "nodes": ["eye_explore", "nose_analyze"], "parallel": true },
+      { "phase": 1, "nodes": ["body_implement"], "parallel": false },
+      { "phase": 2, "nodes": ["tongue_verify"], "parallel": false }
+    ]
+  }
+}

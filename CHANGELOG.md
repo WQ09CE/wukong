@@ -5,6 +5,19 @@ All notable changes to Wukong will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-01-16
+
+### Changed
+- **BREAKING**: Removed legacy scheduler (`~/.wukong/scheduler/`), replaced by Runtime 2.0 (`~/.wukong/runtime/`)
+- All scheduler references now point to `~/.wukong/runtime/scheduler.py`
+- Updated CI tests to verify Runtime 2.0 instead of legacy scheduler
+- Self-check (`/wukong 自检`) now tests Runtime 2.0 modules only
+- Added agents installation support in install.sh
+
+### Removed
+- Legacy scheduler module (`wukong-dist/scheduler/`)
+- Scheduler installation from install.sh (cleanup still runs for upgrades)
+
 ## [1.7.3] - 2026-01-15
 
 ### Changed

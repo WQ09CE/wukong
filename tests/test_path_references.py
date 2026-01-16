@@ -23,7 +23,7 @@ PATH_MAPPING = {
     "~/.wukong/hooks/": SOURCE_DIR / "hooks",
     "~/.wukong/context/": SOURCE_DIR / "context",
     "~/.wukong/templates/": SOURCE_DIR / "templates",
-    "~/.wukong/scheduler/": SOURCE_DIR / "scheduler",
+    "~/.wukong/runtime/": SOURCE_DIR / "runtime",
     # 相对路径引用
     ".claude/skills/": SOURCE_DIR / "skills",
     ".claude/rules/": SOURCE_DIR / "rules",
