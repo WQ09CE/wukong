@@ -121,7 +121,6 @@ WUKONG_COMMANDS=(
     "wukong.md"
     "schedule.md"
     "neiguan.md"
-    "longimage.md"
 )
 
 WUKONG_AGENTS=(

@@ -164,7 +164,7 @@ if ($Uninstall) {
 
     # Remove Wukong commands (only known Wukong commands)
     $WukongCommands = @(
-        "wukong.md", "schedule.md", "neiguan.md", "longimage.md"
+        "wukong.md", "schedule.md", "neiguan.md"
     )
     $CommandsDir = "$ClaudeDir\commands"
     $RemovedCommands = 0
@@ -503,7 +503,7 @@ if ($Clean) {
     }
 
     # Remove commands
-    $WukongCommands = @("wukong.md", "schedule.md", "neiguan.md", "longimage.md")
+    $WukongCommands = @("wukong.md", "schedule.md", "neiguan.md")
     foreach ($Cmd in $WukongCommands) {
         $CmdPath = Join-Path "$ClaudeDir\commands" $Cmd
         if (Test-Path $CmdPath) {
