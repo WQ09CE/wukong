@@ -100,21 +100,28 @@ detect_old_version() {
 }
 
 # Wukong-specific files (only these will be cleaned)
+# Current valid skills (v2.0)
 WUKONG_SKILLS=(
-    "architect.md"
-    "code-reviewer.md"
     "ding.md"
     "evidence.md"
-    "explorer.md"
     "hui.md"
-    "implementer.md"
     "jie.md"
     "jindouyun.md"
     "orchestration.md"
-    "requirements-analyst.md"
     "shi.md"
     "summoning.md"
-    "tester.md"
+)
+
+# Deprecated skills from old versions (will be auto-removed on install)
+DEPRECATED_SKILLS=(
+    "architect.md"           # v1.x → moved to agents/mind.md
+    "code-reviewer.md"       # v1.x → moved to agents/nose.md
+    "explorer.md"            # v1.x → moved to agents/eye.md
+    "implementer.md"         # v1.x → moved to agents/body.md
+    "requirements-analyst.md" # v1.x → moved to agents/ear.md
+    "tester.md"              # v1.x → moved to agents/tongue.md
+    "verification-pipeline.md" # v0.x deprecated
+    "wisdom.md"              # v0.x deprecated
 )
 
 WUKONG_COMMANDS=(
@@ -185,10 +192,18 @@ clean_old_version() {
     echo -e "${BLUE}Cleaning old Wukong installation...${NC}"
     echo ""
 
-    # Clean skills (only Wukong-specific files)
+    # Clean skills (current + deprecated)
     if [ -d "$GLOBAL_CLAUDE_DIR/skills" ]; then
         local skill_count=0
+        # Clean current skills
         for skill in "${WUKONG_SKILLS[@]}"; do
+            if [ -f "$GLOBAL_CLAUDE_DIR/skills/$skill" ]; then
+                rm -f "$GLOBAL_CLAUDE_DIR/skills/$skill"
+                ((skill_count++))
+            fi
+        done
+        # Clean deprecated skills from old versions
+        for skill in "${DEPRECATED_SKILLS[@]}"; do
             if [ -f "$GLOBAL_CLAUDE_DIR/skills/$skill" ]; then
                 rm -f "$GLOBAL_CLAUDE_DIR/skills/$skill"
                 ((skill_count++))
@@ -430,6 +445,18 @@ if [ -d "$SOURCE_DIR/skills" ] && ls "$SOURCE_DIR"/skills/*.md 1>/dev/null 2>&1;
     cp "$SOURCE_DIR"/skills/*.md "$CLAUDE_DIR/skills/"
     SKILL_COUNT=$(find "$SOURCE_DIR/skills" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
     echo -e "  ${GREEN}[ok]${NC} Skills ($SKILL_COUNT files)"
+fi
+
+# 清理废弃的旧版 skill 文件
+DEPRECATED_COUNT=0
+for deprecated in "${DEPRECATED_SKILLS[@]}"; do
+    if [ -f "$CLAUDE_DIR/skills/$deprecated" ]; then
+        rm -f "$CLAUDE_DIR/skills/$deprecated"
+        ((DEPRECATED_COUNT++))
+    fi
+done
+if [ $DEPRECATED_COUNT -gt 0 ]; then
+    echo -e "  ${GREEN}[ok]${NC} Cleaned $DEPRECATED_COUNT deprecated skill files"
 fi
 
 # 复制 agents (六根分身定义)

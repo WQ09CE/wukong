@@ -121,16 +121,24 @@ if ($Uninstall) {
         Write-Step "skip" "Core rule not found" "Yellow"
     }
 
-    # Remove Wukong skills (only known Wukong skills)
+    # Remove Wukong skills (current + deprecated)
     $WukongSkills = @(
-        "architect.md", "code-reviewer.md", "ding.md", "evidence.md",
-        "explorer.md", "hui.md", "implementer.md", "jie.md",
-        "jindouyun.md", "orchestration.md", "requirements-analyst.md",
-        "shi.md", "summoning.md", "tester.md"
+        "ding.md", "evidence.md", "hui.md", "jie.md",
+        "jindouyun.md", "orchestration.md", "shi.md", "summoning.md"
+    )
+    $DeprecatedSkills = @(
+        "architect.md",           # v1.x → moved to agents/mind.md
+        "code-reviewer.md",       # v1.x → moved to agents/nose.md
+        "explorer.md",            # v1.x → moved to agents/eye.md
+        "implementer.md",         # v1.x → moved to agents/body.md
+        "requirements-analyst.md", # v1.x → moved to agents/ear.md
+        "tester.md",              # v1.x → moved to agents/tongue.md
+        "verification-pipeline.md", # v0.x deprecated
+        "wisdom.md"               # v0.x deprecated
     )
     $SkillsDir = "$ClaudeDir\skills"
     $RemovedSkills = 0
-    foreach ($Skill in $WukongSkills) {
+    foreach ($Skill in ($WukongSkills + $DeprecatedSkills)) {
         $SkillPath = Join-Path $SkillsDir $Skill
         if (Test-Path $SkillPath) {
             Remove-Item $SkillPath -Force
@@ -477,14 +485,16 @@ if ($Clean) {
         Remove-Item $CoreRule -Force
     }
 
-    # Remove skills
+    # Remove skills (current + deprecated)
     $WukongSkills = @(
-        "architect.md", "code-reviewer.md", "ding.md", "evidence.md",
-        "explorer.md", "hui.md", "implementer.md", "jie.md",
-        "jindouyun.md", "orchestration.md", "requirements-analyst.md",
-        "shi.md", "summoning.md", "tester.md"
+        "ding.md", "evidence.md", "hui.md", "jie.md",
+        "jindouyun.md", "orchestration.md", "shi.md", "summoning.md"
     )
-    foreach ($Skill in $WukongSkills) {
+    $DeprecatedSkills = @(
+        "architect.md", "code-reviewer.md", "explorer.md", "implementer.md",
+        "requirements-analyst.md", "tester.md", "verification-pipeline.md", "wisdom.md"
+    )
+    foreach ($Skill in ($WukongSkills + $DeprecatedSkills)) {
         $SkillPath = Join-Path "$ClaudeDir\skills" $Skill
         if (Test-Path $SkillPath) {
             Remove-Item $SkillPath -Force
@@ -569,6 +579,23 @@ if (Test-Path $SkillsSource) {
         Copy-Item "$SkillsSource\*.md" -Destination "$ClaudeDir\skills\" -Force
         Write-Step "ok" "Skills ($($SkillFiles.Count) files)"
     }
+}
+
+# Clean deprecated skill files from old versions
+$DeprecatedSkills = @(
+    "architect.md", "code-reviewer.md", "explorer.md", "implementer.md",
+    "requirements-analyst.md", "tester.md", "verification-pipeline.md", "wisdom.md"
+)
+$DeprecatedCount = 0
+foreach ($Deprecated in $DeprecatedSkills) {
+    $DeprecatedPath = Join-Path "$ClaudeDir\skills" $Deprecated
+    if (Test-Path $DeprecatedPath) {
+        Remove-Item $DeprecatedPath -Force
+        $DeprecatedCount++
+    }
+}
+if ($DeprecatedCount -gt 0) {
+    Write-Step "ok" "Cleaned $DeprecatedCount deprecated skill files"
 }
 
 # Copy agents (six roots)
