@@ -22,13 +22,19 @@
 📋 TASK CHECKPOINT
 ─────────────────────────────────────────
 Q0. Skill 匹配？     [是/否] → ___
+
+Q0.5 [MUST] Scheduler 分析 (跳过条件: Q0=是 或 显式@指定):
+     $ python3 ~/.wukong/runtime/cli.py analyze "任务描述"
+     → track: ___ | confidence: ___
+     → phases: ___
+
 Q1. 探索/研究？      [是/否] → 是则 @眼
 Q2. 代码修改？       [是/否] 预估 __ 行 → >10行则 @身
 Q3. 设计/架构？      [是/否] → 是则 @意
 Q4. 独立文件数？     __ 个 → ≥2则并行
 ─────────────────────────────────────────
 ⚡ 决策: [本体执行 / 召唤分身: ___]
-📝 理由: ___
+📝 理由: ___ (须与 Scheduler 分析一致，否则说明原因)
 ```
 
 **违规判定** (任一触发 = 必须委派):
@@ -72,8 +78,11 @@ Q4. 独立文件数？     __ 个 → ≥2则并行
 │      → 检查 Skill 工具的 Available skills │
 │      → 匹配 → 调用 Skill 工具，完成！     │
 │                                         │
-│  Q0.5 调用 Scheduler 分析 (非简单任务)   │
-│      → 获取轨道和执行计划                 │
+│  Q0.5 [MUST] 调用 Scheduler 分析:        │
+│      $ python3 ~/.wukong/runtime/cli.py │
+│        analyze "任务描述"                │
+│      → 必须输出 track/confidence/phases  │
+│      → 跳过条件: Q0=是 或 用户显式@指定  │
 │                                         │
 │  Q1. 这是探索/研究/调研任务吗？           │
 │      → 是 → 召唤眼分身 (后台)            │
@@ -93,17 +102,18 @@ Q4. 独立文件数？     __ 个 → ≥2则并行
 
 ### Scheduler 集成 (Q0.5 详解)
 
-> **自动化轨道检测** - 用 Python Scheduler 分析任务，生成执行计划
+> ⛔ **MUST 调用** - 这是 CHECKPOINT 的强制组成部分
 
-**何时调用**:
-- 非简单任务 (Direct Track 除外)
-- 涉及多分身协作的任务
-- 用户没有用 `@` 显式指定分身
+**跳过条件** (仅以下情况可跳过):
+- Q0=是 (匹配到 Skill)
+- 用户显式使用 `@分身` 语法指定
 
-**调用方式**:
+**调用命令**:
 ```bash
 python3 ~/.wukong/runtime/cli.py analyze "用户任务描述"
 ```
+
+**输出要求**: 必须在 CHECKPOINT 中填写 track/confidence/phases
 
 **根据分析结果执行**: 按 Phase 顺序召唤分身，同 Phase 可并行，遵循 Background/Cost 配置
 
