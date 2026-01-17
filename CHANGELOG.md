@@ -5,14 +5,42 @@ All notable changes to Wukong will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - 2026-01-16
+## [2.0.0] - 2026-01-17
+
+### 🚀 Major Features
+
+#### Runtime 2.0 Architecture
+- **New**: Full-featured runtime engine (`~/.wukong/runtime/`)
+  - `scheduler.py` - DAG-based task scheduling with template support
+  - `state.py` - Persistent state management with atomic writes
+  - `events.py` - Event bus for inter-agent communication
+  - `metrics.py` - Cost tracking and performance metrics
+  - `anchors.py` - Knowledge anchor management system
+  - `cli.py` - Unified command-line interface
+
+#### Six Roots Agent Definitions
+- **New**: Dedicated agent files in `~/.claude/agents/`
+  - `eye.md` - 眼分身 (Explorer) - Codebase exploration
+  - `ear.md` - 耳分身 (Analyst) - Requirements analysis
+  - `nose.md` - 鼻分身 (Reviewer) - Code review & security
+  - `tongue.md` - 舌分身 (Tester) - Testing & documentation
+  - `body.md` - 斗战胜佛 (Implementer) - Code implementation
+  - `mind.md` - 意分身 (Architect) - Design & architecture
+
+#### Hook System
+- **New**: `on_stop.py` - Graph completion hook with anchor extraction
+- **New**: `on_subagent_stop.py` - Subagent validation with evidence levels (L0-L3)
+
+#### Introspection Command
+- **New**: `/neiguan` (内观) - BLOCKING checklist for self-reflection
 
 ### Changed
-- **BREAKING**: Removed legacy scheduler (`~/.wukong/scheduler/`), replaced by Runtime 2.0 (`~/.wukong/runtime/`)
-- All scheduler references now point to `~/.wukong/runtime/scheduler.py`
-- Updated CI tests to verify Runtime 2.0 instead of legacy scheduler
+- **BREAKING**: Removed legacy scheduler (`~/.wukong/scheduler/`), replaced by Runtime 2.0
+- Unified `--clear-state` behavior across install.sh and install.ps1
+  - Only clears runtime state files (state.json, taskgraph.json, events.jsonl)
+  - User data (notepads, plans, sessions) is ALWAYS preserved
+- Updated CI tests to verify Runtime 2.0 modules
 - Self-check (`/wukong 自检`) now tests Runtime 2.0 modules only
-- Added agents installation support in install.sh
 
 ### Removed
 - Legacy scheduler module (`wukong-dist/scheduler/`)
@@ -142,6 +170,8 @@ No breaking changes. Simply re-run the installer:
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 2.0.0 | 2026-01-17 | Runtime 2.0, Agent definitions, Hook system |
+| 1.8.1 | 2026-01-16 | Bug fixes |
 | 1.6 | 2025-01-15 | CI/CD, automated releases |
 | 1.5 | 2025-01-14 | Windows support, security checks |
 | 1.0 | 2025-01-12 | Initial release |
