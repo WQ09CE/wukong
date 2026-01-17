@@ -743,9 +743,11 @@ if [[ $ADD_ALIAS =~ ^[Yy]$ ]]; then
     if grep -q "alias wukong=" "$SHELL_RC" 2>/dev/null; then
         echo -e "  ${YELLOW}[skip]${NC} Alias already exists in $SHELL_RC"
     else
-        echo "" >> "$SHELL_RC"
-        echo "# Wukong - Claude Code multi-agent orchestrator" >> "$SHELL_RC"
-        echo "$ALIAS_LINE" >> "$SHELL_RC"
+        {
+            echo ""
+            echo "# Wukong - Claude Code multi-agent orchestrator"
+            echo "$ALIAS_LINE"
+        } >> "$SHELL_RC"
         echo -e "  ${GREEN}[ok]${NC} Added alias to $SHELL_RC"
         echo ""
         echo -e "  ${YELLOW}Run this to activate now:${NC}"
