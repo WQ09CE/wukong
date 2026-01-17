@@ -13,7 +13,8 @@
 .PARAMETER Force
     Skip confirmation prompts.
 .PARAMETER ClearState
-    Clear runtime state (notepads, plans, sessions) without reinstalling.
+    Clear runtime state files (state.json, taskgraph.json, events.jsonl, artifacts/) without reinstalling.
+    User data (notepads, plans, sessions) is preserved.
 .EXAMPLE
     .\install.ps1
     .\install.ps1 -TargetDir "C:\Projects\myproject"
@@ -308,28 +309,8 @@ if ($ClearState) {
     Write-ColorOutput "Wukong State Cleaner" "Blue"
     Write-Host ""
 
-    # Determine target directories
-    $ProjectRoot = Get-Location
-    if ([string]::IsNullOrEmpty($TargetDir)) {
-        $TargetDir = $ProjectRoot
-    }
-
-    if ($TargetDir -like "*.claude" -or $TargetDir -like "*.claude\") {
-        $WukongDir = Join-Path (Split-Path $TargetDir -Parent) ".wukong"
-    }
-    else {
-        $WukongDir = Join-Path $TargetDir ".wukong"
-    }
-
-    # Runtime 2.0 state files and directories
+    # Runtime 2.0 state files only (user data preserved)
     $GlobalWukongDir = Join-Path $HOME ".wukong"
-
-    $StateDirs = @(
-        (Join-Path $WukongDir "notepads"),
-        (Join-Path $WukongDir "plans"),
-        (Join-Path $WukongDir "context\sessions"),
-        (Join-Path $WukongDir "context\current")
-    )
 
     $StateFiles = @(
         (Join-Path $GlobalWukongDir "state.json"),
@@ -338,22 +319,6 @@ if ($ClearState) {
     )
 
     $ArtifactsDir = Join-Path $GlobalWukongDir "artifacts"
-
-    $ClearedCount = 0
-    foreach ($Dir in $StateDirs) {
-        if (Test-Path $Dir) {
-            $Items = Get-ChildItem $Dir -Force -ErrorAction SilentlyContinue
-            if ($Items) {
-                Remove-Item "$Dir\*" -Recurse -Force -ErrorAction SilentlyContinue
-                Write-Step "ok" "Cleared $Dir"
-                $ClearedCount++
-            } else {
-                Write-Step "skip" "$Dir is already empty" "Yellow"
-            }
-        } else {
-            Write-Step "skip" "$Dir not found" "Yellow"
-        }
-    }
 
     # Clear Runtime 2.0 state files
     $ClearedFiles = 0
@@ -367,18 +332,25 @@ if ($ClearState) {
 
     # Clear artifacts directory
     if (Test-Path $ArtifactsDir) {
-        Remove-Item "$ArtifactsDir\*" -Recurse -Force -ErrorAction SilentlyContinue
-        Write-Step "ok" "Cleared $ArtifactsDir"
-        $ClearedFiles++
+        $ArtifactItems = Get-ChildItem $ArtifactsDir -Force -ErrorAction SilentlyContinue
+        if ($ArtifactItems) {
+            Remove-Item "$ArtifactsDir\*" -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Step "ok" "Cleared $ArtifactsDir"
+            $ClearedFiles++
+        }
     }
 
     Write-Host ""
-    $TotalCleared = $ClearedCount + $ClearedFiles
-    if ($TotalCleared -gt 0) {
-        Write-ColorOutput "Cleared $ClearedCount directories and $ClearedFiles state files!" "Green"
+    if ($ClearedFiles -gt 0) {
+        Write-ColorOutput "Cleared $ClearedFiles state files!" "Green"
     } else {
         Write-ColorOutput "No state to clear." "Yellow"
     }
+    Write-Host ""
+    Write-Host "User data preserved:" -ForegroundColor Green
+    Write-Host "  ~\.wukong\notepads\           (user notes)" -ForegroundColor DarkGray
+    Write-Host "  ~\.wukong\plans\              (user plans)" -ForegroundColor DarkGray
+    Write-Host "  ~\.wukong\context\sessions\   (session archives)" -ForegroundColor DarkGray
     exit 0
 }
 
