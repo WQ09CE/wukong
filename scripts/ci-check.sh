@@ -50,16 +50,34 @@ echo ""
 
 # Step 2: Python Tests
 echo -e "${YELLOW}[2/3] Python Tests (pytest)${NC}"
-if command -v python3 &> /dev/null; then
-    if python3 -m pytest tests/ -v --tb=short; then
+
+# Try to activate conda if available (for pytest)
+CONDA_SH="/opt/homebrew/Caskroom/miniconda/base/etc/profile.d/conda.sh"
+if [ -f "$CONDA_SH" ]; then
+    # shellcheck source=/dev/null
+    source "$CONDA_SH"
+    conda activate base 2>/dev/null || true
+fi
+
+# Find pytest: conda env > system > error
+if command -v pytest &> /dev/null; then
+    PYTEST_CMD="pytest"
+elif python3 -c "import pytest" 2>/dev/null; then
+    PYTEST_CMD="python3 -m pytest"
+else
+    echo -e "  ${RED}✗${NC} pytest not found"
+    echo "     Install with: pip install pytest (or conda install pytest)"
+    FAILED=1
+    PYTEST_CMD=""
+fi
+
+if [ -n "$PYTEST_CMD" ]; then
+    if $PYTEST_CMD tests/ -v --tb=short; then
         echo -e "  ${GREEN}✓${NC} All tests passed"
     else
         echo -e "  ${RED}✗${NC} Tests failed"
         FAILED=1
     fi
-else
-    echo -e "  ${RED}✗${NC} python3 not found"
-    FAILED=1
 fi
 echo ""
 
