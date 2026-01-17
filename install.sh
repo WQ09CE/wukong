@@ -422,21 +422,21 @@ echo -e "  ${GREEN}[ok]${NC} Core rule"
 # 复制命令
 if [ -d "$SOURCE_DIR/commands" ] && ls "$SOURCE_DIR"/commands/*.md 1>/dev/null 2>&1; then
     cp "$SOURCE_DIR"/commands/*.md "$CLAUDE_DIR/commands/"
-    CMD_COUNT=$(ls -1 "$SOURCE_DIR"/commands/*.md 2>/dev/null | wc -l | tr -d ' ')
+    CMD_COUNT=$(find "$SOURCE_DIR/commands" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
     echo -e "  ${GREEN}[ok]${NC} Commands ($CMD_COUNT files)"
 fi
 
 # 复制技能
 if [ -d "$SOURCE_DIR/skills" ] && ls "$SOURCE_DIR"/skills/*.md 1>/dev/null 2>&1; then
     cp "$SOURCE_DIR"/skills/*.md "$CLAUDE_DIR/skills/"
-    SKILL_COUNT=$(ls -1 "$SOURCE_DIR"/skills/*.md 2>/dev/null | wc -l | tr -d ' ')
+    SKILL_COUNT=$(find "$SOURCE_DIR/skills" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
     echo -e "  ${GREEN}[ok]${NC} Skills ($SKILL_COUNT files)"
 fi
 
 # 复制 agents (六根分身定义)
 if [ -d "$SOURCE_DIR/agents" ] && ls "$SOURCE_DIR"/agents/*.md 1>/dev/null 2>&1; then
     cp "$SOURCE_DIR"/agents/*.md "$CLAUDE_DIR/agents/"
-    AGENT_COUNT=$(ls -1 "$SOURCE_DIR"/agents/*.md 2>/dev/null | wc -l | tr -d ' ')
+    AGENT_COUNT=$(find "$SOURCE_DIR/agents" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
     echo -e "  ${GREEN}[ok]${NC} Agents ($AGENT_COUNT files)"
 fi
 
@@ -547,7 +547,7 @@ mkdir -p "$GLOBAL_CLAUDE_DIR/commands"
 # 复制全局命令 (schedule.md 等)
 if [ -d "$SOURCE_DIR/commands" ] && ls "$SOURCE_DIR"/commands/*.md 1>/dev/null 2>&1; then
     cp "$SOURCE_DIR"/commands/*.md "$GLOBAL_CLAUDE_DIR/commands/"
-    GCMD_COUNT=$(ls -1 "$SOURCE_DIR"/commands/*.md 2>/dev/null | wc -l | tr -d ' ')
+    GCMD_COUNT=$(find "$SOURCE_DIR/commands" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
     echo -e "  ${GREEN}[ok]${NC} Commands → ~/.claude/commands/ ($GCMD_COUNT files)"
 fi
 
