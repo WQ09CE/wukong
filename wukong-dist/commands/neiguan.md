@@ -88,24 +88,65 @@ for session in relevant_sessions:
 
 ---
 
+### Step 2.5: Read Session Hui Output
+
+> **Critical step - DO NOT SKIP**
+
+For each relevant session, read the full Hui output (decisions, constraints, problems, interfaces):
+
+```bash
+# For each session directory from Step 2
+HUI_OUTPUT=~/.wukong/context/sessions/${SESSION_DIR}/hui-output.json
+if [ -f "$HUI_OUTPUT" ]; then
+    cat "$HUI_OUTPUT"
+fi
+```
+
+**Must extract from hui-output.json:**
+- [ ] decisions: Key decisions made
+- [ ] constraints: Constraints discovered
+- [ ] problems: Issues encountered
+- [ ] interfaces: Important interfaces
+
+**Checklist:**
+```
+□ Read hui-output.json for EACH session: [list files read]
+□ Extracted all decision/constraint/problem/interface entries
+```
+
+---
+
 ### Step 3: Read Existing Anchors
 
 ```bash
-# MUST execute - Check file existence first
-ANCHORS_FILE=~/.wukong/context/anchors.md
-if [ -f "$ANCHORS_FILE" ] && [ -s "$ANCHORS_FILE" ]; then
-    cat "$ANCHORS_FILE"
+# MUST execute - Detect project name from git root or current directory
+PROJECT_NAME=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")
+PROJECT_ANCHORS=~/.wukong/context/anchors/projects/${PROJECT_NAME}.md
+GLOBAL_ANCHORS=~/.wukong/context/anchors/global.md
+
+# Read project-specific anchors
+if [ -f "$PROJECT_ANCHORS" ]; then
+    echo "=== Project Anchors: $PROJECT_NAME ==="
+    cat "$PROJECT_ANCHORS"
 else
-    echo "ANCHORS_NOT_EXIST_OR_EMPTY"
+    echo "PROJECT_ANCHORS_NOT_EXIST: $PROJECT_ANCHORS"
+fi
+
+# Read global anchors
+if [ -f "$GLOBAL_ANCHORS" ]; then
+    echo "=== Global Anchors ==="
+    cat "$GLOBAL_ANCHORS"
+else
+    echo "GLOBAL_ANCHORS_NOT_EXIST"
 fi
 ```
 
 **Purpose:**
-- Check for related existing anchors
+- Check for related existing anchors (both project-level and global)
 - Avoid duplicate entries
 - Find patterns across sessions
 
-**If file doesn't exist or empty:** Note that no prior anchors exist.
+**If files don't exist:** Note that no prior anchors exist for this scope.
 
 ---
 
@@ -197,7 +238,8 @@ Before finishing, confirm:
 │                                                         │
 │  □ Step 1: index.json read (or confirmed missing)       │
 │  □ Step 2: ALL relevant session compact.md read         │
-│  □ Step 3: anchors.md read (or confirmed missing)       │
+│  □ Step 2.5: ALL relevant session hui-output.json read  │
+│  □ Step 3: Project anchors AND global anchors read      │
 │  □ Step 4: Output generated with correct template       │
 │  □ Anchoring bias: Scope confirmed before analysis      │
 │                                                         │
@@ -212,8 +254,10 @@ Before finishing, confirm:
 
 **File Paths:**
 - Session index: `~/.wukong/context/index.json`
-- Session data: `~/.wukong/context/sessions/{session_id}/compact.md`
-- Anchors: `~/.wukong/context/anchors.md`
+- Session data: `~/.wukong/context/sessions/{session_dir}/compact.md`
+- Session hui output: `~/.wukong/context/sessions/{session_dir}/hui-output.json`
+- Project anchors: `~/.wukong/context/anchors/projects/{project}.md`
+- Global anchors: `~/.wukong/context/anchors/global.md`
 
 **Introspection Dimensions:**
 1. Avatar coordination (分身配合)

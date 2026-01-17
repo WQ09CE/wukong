@@ -246,6 +246,70 @@
 3. **完整存档** → `~/.wukong/context/sessions/{project}-{timestamp}-{session[:8]}/`
 4. **会话索引** → `~/.wukong/context/index.json` (更新)
 
+## 读取接口 (Read Interface)
+
+> 供 Hui/Neiguan 模块查询识系统数据
+
+### 查询项目锚点
+
+```bash
+# Get project name from git root or current directory
+PROJECT_NAME=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")
+
+# Read project-specific anchors
+cat ~/.wukong/context/anchors/projects/${PROJECT_NAME}.md
+
+# Read global anchors
+cat ~/.wukong/context/anchors/global.md
+```
+
+### 查询会话数据
+
+```bash
+# List all sessions for a project (session_dir format: {project}-{timestamp}-{session[:8]})
+ls -1d ~/.wukong/context/sessions/${PROJECT_NAME}-*/
+
+# Read specific session context
+cat ~/.wukong/context/sessions/${SESSION_DIR}/compact.md
+cat ~/.wukong/context/sessions/${SESSION_DIR}/hui-output.json
+cat ~/.wukong/context/sessions/${SESSION_DIR}/shi-result.json
+```
+
+### 通过 index.json 查询
+
+```python
+import json
+import os
+
+with open(os.path.expanduser("~/.wukong/context/index.json")) as f:
+    index = json.load(f)
+
+# Filter sessions by project
+project_sessions = [s for s in index["sessions"]
+                    if s["project_path"].endswith(project_name)]
+
+# Get session directory (format: {project}-{timestamp}-{session[:8]})
+for session in project_sessions:
+    session_id = session["session_id"]
+    timestamp = session.get("timestamp", "")
+    # Session directory naming convention
+    session_dir = f"{project_name}-{timestamp}-{session_id[:8]}"
+```
+
+### 文件路径速查
+
+| 数据类型 | 路径 |
+|----------|------|
+| 会话索引 | `~/.wukong/context/index.json` |
+| 项目锚点 | `~/.wukong/context/anchors/projects/{project}.md` |
+| 全局锚点 | `~/.wukong/context/anchors/global.md` |
+| 会话缩形态 | `~/.wukong/context/sessions/{session_dir}/compact.md` |
+| 会话慧输出 | `~/.wukong/context/sessions/{session_dir}/hui-output.json` |
+| 会话识结果 | `~/.wukong/context/sessions/{session_dir}/shi-result.json` |
+| 活跃会话 | `~/.wukong/context/active/{session_id}/compact.md` |
+
+> **Note**: `session_dir` format is `{project}-{timestamp}-{session_id[:8]}`
+
 ## 惯性提示 (读取)
 
 > 识模块在特定时机被查询，提供惯性提示。

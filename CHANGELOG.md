@@ -5,6 +5,22 @@ All notable changes to Wukong will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2026-01-17
+
+### Fixed
+- **neiguan.md**: Fixed anchor path mismatch - changed from single `anchors.md` to `anchors/projects/{project}.md` structure
+- **neiguan.md**: Added Step 2.5 to read `hui-output.json` for each session (decisions, constraints, problems, interfaces)
+- **neiguan.md**: Updated completion checklist with new verification steps
+- **shi.md**: Added "Read Interface" section documenting how to query Shi system data
+
+### Changed
+- Introspection now correctly reads all Shi system data sources:
+  - Session index (`index.json`)
+  - Session compact forms (`compact.md`)
+  - Session Hui outputs (`hui-output.json`) - NEW
+  - Project anchors (`anchors/projects/{project}.md`) - FIXED
+  - Global anchors (`anchors/global.md`) - NEW
+
 ## [2.0.0] - 2026-01-17
 
 ### 🚀 Major Features
