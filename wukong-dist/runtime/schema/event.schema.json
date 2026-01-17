@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wukong.dev/schema/event.schema.json",
+  "title": "Wukong Event",
+  "description": "An event in the Wukong event-driven architecture",
+  "type": "object",
+  "required": ["event_id", "type", "timestamp", "session_id"],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "description": "Unique identifier for this event",
+      "pattern": "^evt_[a-z0-9]+$"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "UserPromptSubmit",
+        "TaskGraphCreated",
+        "NodeScheduled",
+        "SubagentStart",
+        "SubagentProgress",
+        "SubagentStop",
+        "NodeCompleted",
+        "NodeFailed",
+        "NodeBlocked",
+        "ValidationPass",
+        "ValidationFail",
+        "Stop",
+        "PreCompact",
+        "ContextSnapshot",
+        "AnchorExtracted"
+      ],
+      "description": "Type of event"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when event occurred"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session identifier for grouping related events"
+    },
+    "node_id": {
+      "type": ["string", "null"],
+      "description": "Associated node ID if event is node-specific"
+    },
+    "graph_id": {
+      "type": ["string", "null"],
+      "description": "Associated task graph ID"
+    },
+    "payload": {
+      "type": "object",
+      "description": "Event-specific payload data",
+      "additionalProperties": true
+    },
+    "source": {
+      "type": "string",
+      "enum": ["user", "scheduler", "subagent", "validator", "system"],
+      "description": "Source of the event"
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "ID for correlating related events across the pipeline"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "type": { "const": "UserPromptSubmit" } }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": ["prompt"],
+            "properties": {
+              "prompt": { "type": "string" },
+              "explicit_avatar": { "type": ["string", "null"] },
+              "explicit_track": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "const": "SubagentStart" } }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": ["role", "task"],
+            "properties": {
+              "role": { "type": "string" },
+              "task": { "type": "string" },
+              "background": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "const": "SubagentStop" } }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": ["status"],
+            "properties": {
+              "status": { "type": "string", "enum": ["success", "failure", "timeout"] },
+              "summary": { "type": "string" },
+              "artifacts": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "const": "ValidationFail" } }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": ["reason"],
+            "properties": {
+              "reason": { "type": "string" },
+              "violations": { "type": "array", "items": { "type": "string" } },
+              "suggested_action": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

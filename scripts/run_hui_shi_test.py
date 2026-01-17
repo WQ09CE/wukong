@@ -27,11 +27,14 @@ from pathlib import Path
 from typing import Any
 
 # Fix Unicode encoding for Windows (cp1252 doesn't support Chinese chars)
-# This must be done before any print() calls with Chinese characters
-if sys.stdout and hasattr(sys.stdout, 'buffer'):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-if sys.stderr and hasattr(sys.stderr, 'buffer'):
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+# Only rewrap stdout/stderr when running as main script (not under pytest)
+# This avoids conflicts with pytest's capture mechanism
+def _setup_unicode_encoding():
+    """Setup UTF-8 encoding for stdout/stderr on Windows."""
+    if sys.stdout and hasattr(sys.stdout, 'buffer'):
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    if sys.stderr and hasattr(sys.stderr, 'buffer'):
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 # 添加 hui-extract.py 所在目录到路径
 sys.path.insert(0, str(Path(__file__).parent))
@@ -631,4 +634,5 @@ def main():
 
 
 if __name__ == '__main__':
+    _setup_unicode_encoding()
     main()

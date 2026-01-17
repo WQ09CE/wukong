@@ -102,7 +102,7 @@ Q4. 独立文件数？     __ 个 → ≥2则并行
 
 **调用方式**:
 ```bash
-python3 ~/.wukong/scheduler/cli.py analyze "用户任务描述"
+python3 ~/.wukong/runtime/cli.py analyze "用户任务描述"
 ```
 
 **根据分析结果执行**: 按 Phase 顺序召唤分身，同 Phase 可并行，遵循 Background/Cost 配置
@@ -169,7 +169,7 @@ python3 ~/.wukong/scheduler/cli.py analyze "用户任务描述"
 **DAG 说明**:
 - `[A+B]` = 同一 Phase，可并行
 - `→` = Phase 依赖，必须串行
-- 详见 `~/.wukong/scheduler/scheduler.py` 中的 `TRACK_DAG`
+- 详见 `~/.wukong/runtime/scheduler.py` 中的 DAG 定义
 
 ## Summoning (召唤分身)
 
@@ -270,10 +270,11 @@ python3 ~/.wukong/scheduler/cli.py analyze "用户任务描述"
 - `~/.claude/skills/summoning.md` - 召唤：4部分声明 + 7段式Prompt
 - `~/.claude/skills/orchestration.md` - 轨道编排详细模式
 
-**Scheduler 模块**：
-- `~/.wukong/scheduler/scheduler.py` - 核心调度逻辑
-- `~/.wukong/scheduler/cli.py` - 命令行接口
-- `~/.wukong/scheduler/todo_integration.py` - TodoWrite 集成
+**Runtime 模块** (调度 + 状态 + 产物)：
+- `~/.wukong/runtime/cli.py` - 命令行接口
+- `~/.wukong/runtime/scheduler.py` - DAG 调度逻辑
+- `~/.wukong/runtime/state_manager.py` - 状态管理
+- `~/.wukong/runtime/artifact_manager.py` - 产物管理
 - `/schedule` 命令 - 独立调度分析 (`~/.claude/commands/schedule.md`)
 
 **Context 模块** (Snapshot + Aggregator)：

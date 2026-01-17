@@ -4,6 +4,7 @@
 
 Give Claude Code memory, teach it reflection, enable continuous evolution.
 
+[![Version](https://img.shields.io/badge/version-v2.0.0-green.svg)](https://github.com/WQ09CE/wukong/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![中文文档](https://img.shields.io/badge/docs-%E4%B8%AD%E6%96%87-blue)](README-zh.md)
 
@@ -37,11 +38,11 @@ Give Claude Code memory, teach it reflection, enable continuous evolution.
 
 ## Three Core Highlights
 
-### 1. Six Roots - Multi-Agent Collaboration for Complex Engineering
+### 1. Six Roots - Native Multi-Agent Collaboration (Runtime 2.0)
 
 > One command, automatic task decomposition, parallel execution, aggregated results
 
-Inspired by the Buddhist concept of "Six Roots" (six sense organs), Wukong decomposes complex engineering tasks across six specialized agents:
+Inspired by the Buddhist concept of "Six Roots" (six sense organs), Wukong decomposes complex engineering tasks across six specialized agents. **In v2.0, agents are native Claude subagents** with dedicated persona files and tool permissions.
 
 | Root | Agent | Responsibility | Best For |
 |:----:|-------|----------------|----------|
@@ -52,10 +53,17 @@ Inspired by the Buddhist concept of "Six Roots" (six sense organs), Wukong decom
 | ⚔️ Body | Implementer | Execute · Build · Act | Code implementation, bug fixes, features |
 | 🧠 Mind | Architect | Think · Design · Decide | System design, tech decisions, architecture |
 
+**Runtime 2.0 Features:**
+- **TaskGraph/DAG Scheduling** - Visual task dependency graphs with JSON templates
+- **Event-Driven Architecture** - All state changes logged via EventBus (events.jsonl)
+- **Recoverable State** - Crash-safe atomic state management (state.json)
+- **Health Monitoring** - Heartbeat tracking and stall detection for subagents
+- **Artifact Management** - Structured output collection from all agents
+
 **Intelligent Scheduling:**
 - **Cost-Aware Routing** - CHEAP agents run 10+ in parallel, EXPENSIVE agents block for quality
-- **Dynamic Tracks** - Feature/Fix/Refactor auto-selects optimal workflow
-- **Extensible** - Custom skill files enable unlimited capability expansion
+- **Dynamic Tracks** - Feature/Fix/Refactor auto-selects optimal workflow (see `runtime/templates/`)
+- **Native Agents** - Six agent personas defined in `agents/*.md` with tool allowlists
 
 ```bash
 # Explicit agent dispatch
@@ -63,9 +71,9 @@ Inspired by the Buddhist concept of "Six Roots" (six sense organs), Wukong decom
 /wukong @architect design a caching strategy
 /wukong @implementer implement the login endpoint
 
-# Automatic track selection
-/wukong add user authentication    # → Feature track: Ear→Mind→Body→Tongue→Nose
-/wukong fix the login bug          # → Fix track: Eye→Body→Tongue
+# Automatic track selection (uses TaskGraph DAG)
+/wukong add user authentication    # → Feature track: [Ear+Eye]→Mind→Body→[Tongue+Nose]
+/wukong fix the login bug          # → Fix track: [Eye+Nose]→Body→Tongue
 ```
 
 ---
@@ -177,8 +185,10 @@ cd wukong
 
 The installer will:
 1. Copy rules, skills, and commands to `.claude/` in your project
-2. Install hooks to `~/.wukong/hooks/`
-3. Register PreCompact Hook in `~/.claude/settings.json` (with confirmation)
+2. Copy native agent personas to `~/.claude/agents/` (Six Roots subagent definitions)
+3. Install Runtime 2.0 modules to `~/.wukong/runtime/` (scheduler, event bus, state manager)
+4. Install hooks to `~/.wukong/hooks/`
+5. Register PreCompact Hook in `~/.claude/settings.json` (with confirmation)
 
 ### Usage
 
@@ -213,6 +223,21 @@ wukong/
 │   ├── rules/                # Core rules (Compliance)
 │   ├── skills/               # Agent skill definitions
 │   ├── commands/             # Command handlers
+│   ├── agents/               # [v2.0] Native agent personas (Six Roots)
+│   │   ├── eye.md            # Explorer agent
+│   │   ├── ear.md            # Analyst agent
+│   │   ├── nose.md           # Reviewer agent
+│   │   ├── tongue.md         # Tester agent
+│   │   ├── body.md           # Implementer agent
+│   │   └── mind.md           # Architect agent
+│   ├── runtime/              # [v2.0] Runtime 2.0 modules
+│   │   ├── scheduler.py      # DAG-based task scheduler
+│   │   ├── event_bus.py      # Event-driven communication
+│   │   ├── state_manager.py  # Atomic state persistence
+│   │   ├── health_monitor.py # Heartbeat & stall detection
+│   │   ├── artifact_manager.py # Output collection
+│   │   ├── schema/           # JSON schemas for validation
+│   │   └── templates/        # Track templates (fix, feature, refactor)
 │   └── hooks/                # PreCompact Hook (Reflection)
 │
 ├── install.sh                # Installer script (Linux/macOS)
@@ -221,8 +246,18 @@ wukong/
 └── README-zh.md              # Chinese README
 
 # User directory after installation
+~/.claude/
+├── rules/                    # Wukong core rules
+├── skills/                   # Skill definitions
+├── commands/                 # Command handlers
+└── agents/                   # [v2.0] Native agent personas
+
 ~/.wukong/
 ├── hooks/                    # Global hooks
+├── runtime/                  # [v2.0] Runtime modules
+│   ├── state.json            # Current execution state
+│   ├── events.jsonl          # Event log (append-only)
+│   └── artifacts/            # Agent outputs
 └── context/                  # Knowledge storage
     ├── active/               # Active sessions
     ├── sessions/             # Session archives

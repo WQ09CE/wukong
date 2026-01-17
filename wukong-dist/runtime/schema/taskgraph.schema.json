@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wukong.dev/schema/taskgraph.schema.json",
+  "title": "Wukong TaskGraph",
+  "description": "A directed acyclic graph representing a task execution plan in Wukong",
+  "type": "object",
+  "required": ["id", "title", "track", "status", "nodes", "edges", "created_at"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for this task graph",
+      "pattern": "^tg_[a-z0-9]+$"
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title describing the task"
+    },
+    "track": {
+      "type": "string",
+      "enum": ["fix", "feature", "refactor", "direct"],
+      "description": "Track type determining the DAG template"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["created", "running", "paused", "completed", "aborted"],
+      "description": "Current status of the task graph execution"
+    },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "node.schema.json" },
+      "description": "List of nodes in the graph"
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to"],
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "Source node ID"
+          },
+          "to": {
+            "type": "string",
+            "description": "Target node ID"
+          },
+          "condition": {
+            "type": "string",
+            "enum": ["on_success", "on_failure", "always"],
+            "default": "on_success",
+            "description": "Condition for edge traversal"
+          }
+        }
+      },
+      "description": "Edges defining dependencies between nodes"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when graph was created"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of last update"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "user_prompt": {
+          "type": "string",
+          "description": "Original user prompt that triggered this graph"
+        },
+        "estimated_duration_sec": {
+          "type": "number",
+          "description": "Estimated total duration in seconds"
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "normal", "high"],
+          "default": "normal"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "working_dir": {
+          "type": "string",
+          "description": "Working directory for execution"
+        },
+        "anchors": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Context anchors relevant to this task"
+        },
+        "shi_prompts": {
+          "type": "object",
+          "description": "Inertia prompts (T1/T2) for avatars"
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "properties": {
+        "current_phase": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Current execution phase (0-indexed)"
+        },
+        "active_nodes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Currently executing node IDs"
+        },
+        "completed_nodes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Completed node IDs"
+        },
+        "failed_nodes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Failed node IDs"
+        }
+      }
+    }
+  }
+}

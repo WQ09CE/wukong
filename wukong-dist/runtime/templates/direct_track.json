@@ -1,0 +1,52 @@
+{
+  "$schema": "../schema/taskgraph.schema.json",
+  "id": "tg_direct_template",
+  "title": "Direct Track Template",
+  "track": "direct",
+  "status": "created",
+  "nodes": [
+    {
+      "id": "main_execute",
+      "title": "直接执行",
+      "role": "body",
+      "executor": {
+        "type": "main",
+        "name": "本体"
+      },
+      "inputs": {
+        "files": [],
+        "context_refs": [],
+        "upstream_outputs": []
+      },
+      "constraints": {
+        "allowed_tools": ["Read", "Write", "Edit", "Glob", "Grep", "Bash"],
+        "time_budget_sec": 60,
+        "cost_tier": "cheap",
+        "background": "forbidden"
+      },
+      "quality": {
+        "evidence_level_required": "L2",
+        "checklist": [
+          "任务完成",
+          "结果正确"
+        ]
+      },
+      "status": "pending",
+      "outputs": {}
+    }
+  ],
+  "edges": [],
+  "created_at": "2024-01-01T00:00:00Z",
+  "metadata": {
+    "description": "Direct track: 单节点，本体直接执行简单任务",
+    "phases": [
+      { "phase": 0, "nodes": ["main_execute"], "parallel": false }
+    ],
+    "use_cases": [
+      "简单查询",
+      "单文件小修改 (<10行)",
+      "验证性检查",
+      "与用户对话"
+    ]
+  }
+}

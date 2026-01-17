@@ -1,21 +1,24 @@
 """
 测试上下文优化模块
 
-运行: python -m unittest wukong-dist.context.test_context
-或: cd wukong-dist/context && python -m unittest test_context
+运行: python -m pytest tests/test_context.py -v
 """
 
+import sys
 import unittest
 from datetime import datetime
+from pathlib import Path
 
-try:
-    from .snapshot import ContextSnapshot, Anchor, create_snapshot, get_snapshot_for_task
-    from .importance import Importance, MarkedContent, mark, compress_by_importance, format_marked_output
-    from .aggregator import TaskResult, ResultAggregator
-except ImportError:
-    from snapshot import ContextSnapshot, Anchor, create_snapshot, get_snapshot_for_task
-    from importance import Importance, MarkedContent, mark, compress_by_importance, format_marked_output
-    from aggregator import TaskResult, ResultAggregator
+# 添加 context 模块目录到路径
+tests_dir = Path(__file__).parent.resolve()
+project_root = tests_dir.parent
+context_dir = project_root / 'wukong-dist' / 'context'
+if str(context_dir) not in sys.path:
+    sys.path.insert(0, str(context_dir))
+
+from snapshot import ContextSnapshot, Anchor, create_snapshot, get_snapshot_for_task
+from importance import Importance, MarkedContent, mark, compress_by_importance, format_marked_output
+from aggregator import TaskResult, ResultAggregator
 
 
 class TestSnapshot(unittest.TestCase):
