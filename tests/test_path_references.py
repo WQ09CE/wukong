@@ -39,12 +39,14 @@ IGNORE_PATTERNS = [
     r"<[^>]+>",  # <placeholder> 占位符
 ]
 
-# 忽略的文件 (测试文件本身、缓存等)
+# 忽略的文件/目录 (测试文件本身、缓存、历史文档等)
 IGNORE_FILES = [
     ".pytest_cache",
     "__pycache__",
     ".git",
     "node_modules",
+    "plans",  # 历史计划文档，可能引用已删除的文件
+    "docs",   # 设计文档，可能引用已删除的文件
 ]
 
 
