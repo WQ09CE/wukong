@@ -954,7 +954,7 @@ Write-Host ""
 Write-ColorOutput "Shell Alias Setup" "Cyan"
 Write-Host ""
 Write-Host "Add 'wukong' command to quickly start Claude with Wukong?"
-Write-Host "  function wukong { claude -p `"/wukong`" `$args }" -ForegroundColor DarkGray
+Write-Host "  function wukong { claude `"/wukong`" `$args }" -ForegroundColor DarkGray
 Write-Host ""
 
 $AddAlias = Read-Host "Add PowerShell function? [y/N]"
@@ -966,7 +966,7 @@ if ($AddAlias -match "^[Yy]$") {
         Write-Step "ok" "Created PowerShell profile: $PROFILE"
     }
 
-    $FunctionLine = 'function wukong { claude -p "/wukong" $args }'
+    $FunctionLine = 'function wukong { claude "/wukong" $args }'
 
     # Check if function already exists
     $ProfileContent = Get-Content $PROFILE -Raw -ErrorAction SilentlyContinue

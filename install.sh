@@ -737,7 +737,7 @@ if [[ $ADD_ALIAS =~ ^[Yy]$ ]]; then
             ;;
     esac
 
-    ALIAS_LINE="alias wukong='claude -p \"/wukong\"'"
+    ALIAS_LINE="alias wukong='claude \"/wukong\"'"
 
     # Check if alias already exists
     if grep -q "alias wukong=" "$SHELL_RC" 2>/dev/null; then
