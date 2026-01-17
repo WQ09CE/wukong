@@ -160,7 +160,7 @@ cd wukong
 # Install to your project
 ./install.sh /path/to/your/project
 
-# Or install to current directory
+# Or install to user home (default)
 ./install.sh
 ```
 
@@ -174,7 +174,7 @@ cd wukong
 # Install to your project
 .\install.ps1 -TargetDir "C:\path\to\your\project"
 
-# Or install to current directory
+# Or install to user home (default)
 .\install.ps1
 ```
 
@@ -189,6 +189,7 @@ The installer will:
 3. Install Runtime 2.0 modules to `~/.wukong/runtime/` (scheduler, event bus, state manager)
 4. Install hooks to `~/.wukong/hooks/`
 5. Register PreCompact Hook in `~/.claude/settings.json` (with confirmation)
+6. Optionally add file permissions for the installed `.claude/` and `.wukong/` paths (with confirmation)
 
 ### Usage
 

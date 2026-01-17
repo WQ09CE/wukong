@@ -150,7 +150,7 @@ cd wukong
 # 安装到目标项目
 ./install.sh /path/to/your/project
 
-# 或安装到当前目录
+# 或安装到用户主目录（默认）
 ./install.sh
 ```
 
@@ -164,7 +164,7 @@ cd wukong
 # 安装到目标项目
 .\install.ps1 -TargetDir "C:\path\to\your\project"
 
-# 或安装到当前目录
+# 或安装到用户主目录（默认）
 .\install.ps1
 ```
 
@@ -177,6 +177,7 @@ cd wukong
 1. 复制规则、技能、命令到项目的 `.claude/` 目录
 2. 安装 hooks 到 `~/.wukong/hooks/`
 3. 在 `~/.claude/settings.json` 中注册 PreCompact Hook（需确认）
+4. 可选写入 `.claude/` 和 `.wukong/` 的文件权限（需确认）
 
 ### 使用
 

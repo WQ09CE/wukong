@@ -399,8 +399,8 @@ fi
 # 2. 确定目标目录
 # ============================================================
 if [ -z "$TARGET_DIR" ]; then
-    echo -e "Installing to current directory: ${GREEN}$PROJECT_ROOT${NC}"
-    TARGET_DIR="$PROJECT_ROOT"
+    echo -e "Installing to user home: ${GREEN}$HOME${NC}"
+    TARGET_DIR="$HOME"
 fi
 
 # 智能检测: 如果 TARGET_DIR 已经是 .claude 目录，直接使用
@@ -417,7 +417,7 @@ echo ""
 # ============================================================
 # 3. 安装项目文件
 # ============================================================
-echo -e "${BLUE}[1/3] Project Files${NC}"
+echo -e "${BLUE}[1/5] Project Files${NC}"
 
 # 创建目录结构
 mkdir -p "$CLAUDE_DIR/rules"
@@ -560,10 +560,8 @@ fi
 
 echo ""
 
-# ============================================================
-# 4. 安装全局组件 (Global Components)
-# ============================================================
-echo -e "${BLUE}[2/3] Global Components${NC}"
+
+echo -e "${BLUE}[2/5] Global Components${NC}"
 
 GLOBAL_HOOKS_DIR="$GLOBAL_WUKONG_DIR/hooks"
 
@@ -592,7 +590,7 @@ echo ""
 # ============================================================
 # 5. 注册 Hooks 到 Claude Code
 # ============================================================
-echo -e "${BLUE}[3/3] Hook Registration${NC}"
+echo -e "${BLUE}[3/5] Hook Registration${NC}"
 
 SETTINGS_FILE="$HOME/.claude/settings.json"
 
@@ -729,14 +727,81 @@ PYTHON_SCRIPT
     fi
 fi
 
-# ============================================================
-# 6. Shell Alias (optional)
-# ============================================================
+echo -e "${BLUE}[4/5] Permissions${NC}"
+
+PERM_CLAUDE_READ="Read(path:${CLAUDE_DIR}/**)"
+PERM_WUKONG_READ="Read(path:${WUKONG_DIR}/**)"
+PERM_WUKONG_WRITE="Write(path:${WUKONG_DIR}/**)"
+
+if [ "$FORCE_MODE" = true ]; then
+    ADD_PERMS="y"
+else
+    echo ""
+    echo "Add file permissions to Claude settings?"
+    echo -e "  ${DIM}$PERM_CLAUDE_READ${NC}"
+    echo -e "  ${DIM}$PERM_WUKONG_READ${NC}"
+    echo -e "  ${DIM}$PERM_WUKONG_WRITE${NC}"
+    echo ""
+    read -p "Add permissions to ~/.claude/settings.json? [Y/n] " -n 1 -r ADD_PERMS
+    echo ""
+fi
+
+if [[ ! $ADD_PERMS =~ ^[Nn]$ ]]; then
+    mkdir -p "$HOME/.claude"
+    if command -v python3 &>/dev/null; then
+        CLAUDE_DIR_ENV="$CLAUDE_DIR" WUKONG_DIR_ENV="$WUKONG_DIR" python3 << 'PYTHON_SCRIPT'
+import json
+import os
+
+settings_path = os.path.expanduser("~/.claude/settings.json")
+claude_dir = os.environ.get("CLAUDE_DIR_ENV", "")
+wukong_dir = os.environ.get("WUKONG_DIR_ENV", "")
+
+allow_entries = [
+    f"Read(path:{claude_dir}/**)",
+    f"Read(path:{wukong_dir}/**)",
+    f"Write(path:{wukong_dir}/**)",
+]
+
+if os.path.exists(settings_path):
+    with open(settings_path, "r", encoding="utf-8") as f:
+        settings = json.load(f)
+else:
+    settings = {}
+
+permissions = settings.setdefault("permissions", {})
+allow = permissions.setdefault("allow", [])
+
+for entry in allow_entries:
+    if entry and entry not in allow:
+        allow.append(entry)
+
+if "defaultMode" not in permissions:
+    permissions["defaultMode"] = "default"
+
+with open(settings_path, "w", encoding="utf-8") as f:
+    json.dump(settings, f, indent=2, ensure_ascii=False)
+
+print("ok")
+PYTHON_SCRIPT
+        echo -e "  ${GREEN}[ok]${NC} Updated ~/.claude/settings.json permissions"
+    else
+        echo -e "  ${RED}[error]${NC} Python3 not found, cannot merge permissions"
+        echo ""
+        echo -e "  ${YELLOW}Please manually add these to ~/.claude/settings.json permissions.allow:${NC}"
+        echo -e "  ${DIM}$PERM_CLAUDE_READ${NC}"
+        echo -e "  ${DIM}$PERM_WUKONG_READ${NC}"
+        echo -e "  ${DIM}$PERM_WUKONG_WRITE${NC}"
+    fi
+else
+    echo -e "  ${DIM}Skipped permission update${NC}"
+fi
+
 echo ""
-echo -e "${BLUE}Shell Alias Setup${NC}"
+echo -e "${BLUE}[5/5] Shell Alias Setup${NC}"
 echo ""
 echo "Add 'wukong' command to quickly start Claude with Wukong?"
-echo -e "  ${DIM}alias wukong='claude -p \"/wukong\"'${NC}"
+echo -e "  ${DIM}alias wukong='claude \"/wukong\"'${NC}"
 echo ""
 
 if [ "$FORCE_MODE" != true ]; then
@@ -746,7 +811,6 @@ else
 fi
 
 if [[ $ADD_ALIAS =~ ^[Yy]$ ]]; then
-    # Detect shell config file
     SHELL_NAME=$(basename "$SHELL")
     case "$SHELL_NAME" in
         zsh)

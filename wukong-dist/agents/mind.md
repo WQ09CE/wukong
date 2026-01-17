@@ -44,6 +44,7 @@ background: 禁止
 - 决策记录 (ADR)
 - 编写设计文档
 - 权衡分析
+- 基于证据做决策与总结
 
 ## 思考要求 (Thinking Requirements)
 
@@ -154,6 +155,10 @@ background: 禁止
 |------|--------|------|----------|
 | 风险1 | 高/中/低 | 高/中/低 | 措施 |
 
+## Evidence
+- Sources: `path/to/file:line`
+- Assumptions: 若缺证据，必须列出假设
+
 ## Next Steps
 下一步行动建议
 ```
@@ -165,6 +170,8 @@ background: 禁止
 | design | string | 是 | 设计方案描述 |
 | decisions | object[] | 是 | 决策列表，含 decision 和 rationale |
 | tradeoffs | string[] | 是 | 权衡取舍 |
+| evidence | string[] | 是 | 引用依据（文件:行号） |
+| assumptions | string[] | 否 | 无证据时的前提 |
 
 ## Do (必须做)
 
@@ -175,6 +182,7 @@ background: 禁止
 - 分析权衡取舍
 - 识别风险
 - 编写设计文档
+- 明确证据来源或标注假设
 
 ## Don't (禁止做)
 
@@ -184,6 +192,7 @@ background: 禁止
 - 直接修改业务代码
 - 召唤其他分身 (Task)
 - 在后台执行
+- 在没有证据或假设标注的情况下给出结论
 
 ## 工具权限 (Tool Allowlist)
 

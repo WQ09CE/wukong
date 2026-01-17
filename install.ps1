@@ -427,9 +427,9 @@ else {
 # 2. Determine target directory
 # ============================================================
 if ([string]::IsNullOrEmpty($TargetDir)) {
-    Write-Host "Installing to current directory: " -NoNewline
-    Write-ColorOutput "$ProjectRoot" "Green"
-    $TargetDir = $ProjectRoot
+    Write-Host "Installing to user home: " -NoNewline
+    Write-ColorOutput "$HOME" "Green"
+    $TargetDir = $HOME
 }
 
 # Smart detection: if TargetDir is already .claude directory
@@ -505,7 +505,7 @@ if ($Clean) {
 # ============================================================
 # 4. Install project files
 # ============================================================
-Write-ColorOutput "[1/4] Project Files" "Blue"
+Write-ColorOutput "[1/6] Project Files" "Blue"
 
 # Create directory structure
 $Directories = @(
@@ -685,7 +685,7 @@ Write-Host ""
 # ============================================================
 # 5. Install global hooks
 # ============================================================
-Write-ColorOutput "[2/4] Global Hooks" "Blue"
+Write-ColorOutput "[2/6] Global Hooks" "Blue"
 
 $GlobalWukongDir = Join-Path $HOME ".wukong"
 $GlobalHooksDir = Join-Path $GlobalWukongDir "hooks"
@@ -773,7 +773,7 @@ Write-Host ""
 # ============================================================
 # 6. Register hooks to Claude Code
 # ============================================================
-Write-ColorOutput "[3/4] Hook Registration" "Blue"
+Write-ColorOutput "[3/6] Hook Registration" "Blue"
 
 $SettingsFile = Join-Path $HOME ".claude\settings.json"
 $AlreadyRegistered = $false
@@ -909,12 +909,64 @@ else {
     }
 }
 
+Write-ColorOutput "[4/6] Permissions" "Blue"
+Write-Host ""
+
+$PermClaudeRead = "Read(path:$ClaudeDir/**)"
+$PermWukongRead = "Read(path:$WukongDir/**)"
+$PermWukongWrite = "Write(path:$WukongDir/**)"
+
+if ($Force) {
+    $AddPerms = "y"
+}
+else {
+    Write-Host ""
+    Write-Host "Add file permissions to Claude settings?"
+    Write-Host "  $PermClaudeRead" -ForegroundColor DarkGray
+    Write-Host "  $PermWukongRead" -ForegroundColor DarkGray
+    Write-Host "  $PermWukongWrite" -ForegroundColor DarkGray
+    Write-Host ""
+    $AddPerms = Read-Host "Add permissions to ~\.claude\settings.json? [Y/n]"
+}
+
+if ($AddPerms -notmatch "^[Nn]") {
+    if (-not (Test-Path $SettingsFile)) {
+        $Settings = @{}
+    }
+    else {
+        $Settings = Get-Content $SettingsFile -Raw | ConvertFrom-Json -AsHashtable
+    }
+
+    if (-not $Settings.ContainsKey("permissions")) {
+        $Settings["permissions"] = @{}
+    }
+    if (-not $Settings["permissions"].ContainsKey("allow")) {
+        $Settings["permissions"]["allow"] = @()
+    }
+
+    foreach ($Perm in @($PermClaudeRead, $PermWukongRead, $PermWukongWrite)) {
+        if ($Perm -and ($Settings["permissions"]["allow"] -notcontains $Perm)) {
+            $Settings["permissions"]["allow"] += $Perm
+        }
+    }
+
+    if (-not $Settings["permissions"].ContainsKey("defaultMode")) {
+        $Settings["permissions"]["defaultMode"] = "default"
+    }
+
+    $Settings | ConvertTo-Json -Depth 10 | Set-Content $SettingsFile -Encoding UTF8
+    Write-Step "ok" "Updated settings.json permissions"
+}
+else {
+    Write-Host "Skipped permission update" -ForegroundColor DarkGray
+}
+
 Write-Host ""
 
 # ============================================================
 # 7. Verify Installation
 # ============================================================
-Write-ColorOutput "[4/4] Verifying Installation" "Blue"
+Write-ColorOutput "[5/6] Verifying Installation" "Blue"
 
 $VerificationItems = @(
     @{ Path = "$ClaudeDir\rules\00-wukong-core.md"; Name = "Core rule" },
@@ -950,7 +1002,7 @@ if (-not $AllOk) {
 # ============================================================
 
 Write-Host ""
-Write-ColorOutput "Shell Alias Setup" "Cyan"
+Write-ColorOutput "[6/6] Shell Alias Setup" "Cyan"
 Write-Host ""
 Write-Host "Add 'wukong' command to quickly start Claude with Wukong?"
 Write-Host "  function wukong { claude `"/wukong`" `$args }" -ForegroundColor DarkGray

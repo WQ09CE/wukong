@@ -14,12 +14,12 @@
 
 | 分身 | Do | Don't | Output Contract | Tools | Cost | Max | BG |
 |------|-----|-------|-----------------|-------|------|-----|-----|
-| 👁️ 眼 | 搜索、定位、探索 | 修改代码、执行命令 | `{files[], findings[], summary}` | Glob,Grep,Read | CHEAP | 10+ | 必须 |
+| 👁️ 眼 | 搜索、定位、探索 | 修改代码、执行命令、做决策/下结论 | `{files[], findings[], summary}` | Glob,Grep,Read | CHEAP | 10+ | 必须 |
 | 👂 耳 | 澄清需求、定义AC | 实现设计、写代码 | `{goal, AC[], constraints[], questions[]}` | Read | CHEAP | 10+ | 可选 |
 | 👃 鼻 | 审查、扫描、检测 | 修复代码、实现功能 | `{issues[], summary, recommendation}` | Read,Grep | CHEAP | 5+ | 必须 |
 | 👅 舌 | 写测试、写文档 | 实现功能、修改业务 | `{tests[], docs[], results{}}` | Read,Write,Bash | MEDIUM | 2-3 | 可选 |
 | ⚔️ 身 | 写代码、修复bug | 跳过测试、硬编码凭证 | `{files_changed[], summary, tests_run}` | All | EXPENSIVE | 1 | 禁止 |
-| 🧠 意 | 架构设计、技术选型 | 写实现代码、执行命令 | `{design, decisions[], tradeoffs[]}` | Read,Write(.md) | EXPENSIVE | 1 | 禁止 |
+| 🧠 意 | 架构设计、技术选型、结论/总结 | 写实现代码、执行命令 | `{design, decisions[], tradeoffs[], evidence[], assumptions[]}` | Read,Write(.md) | EXPENSIVE | 1 | 禁止 |
 
 ### 详细定义
 
@@ -42,8 +42,12 @@ boundary:
     - 写入文件
     - 删除文件
     - 调用 Task
+    - 直接给出结论或决策
 
-output_contract:
+  note: 决策/总结类任务：眼负责事实与证据，不负责结论。
+
+  output_contract:
+
   files: string[]           # 相关文件路径列表
   findings:                  # 发现列表
     - location: string       # 文件路径:行号
@@ -222,15 +226,21 @@ boundary:
     - 写实现代码
     - 执行命令
     - 直接修改业务代码
+    - 在没有证据或假设标注的情况下给出结论
 
-output_contract:
-  design: string             # 设计方案描述
-  decisions:                 # 决策列表
-    - decision: string       # 决策内容
-      rationale: string      # 决策理由
-  tradeoffs: string[]        # 权衡取舍
+  output_contract:
+    design: string             # 设计方案描述
+    decisions:                 # 决策列表
+      - decision: string       # 决策内容
+        rationale: string      # 决策理由
+    tradeoffs: string[]        # 权衡取舍
+    evidence: string[]         # 证据引用(文件:行号)
+    assumptions: string[]      # 无证据时的前提
 
-tools:
+  note: 决策/总结类任务：意负责结论与权衡，基于证据或明确假设。
+
+  tools:
+
   allowed: [Read, Write (仅 .md 文件)]
   forbidden: [Edit, Bash, Glob, Grep, Task]
 
