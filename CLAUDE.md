@@ -94,9 +94,6 @@ After modifying rules or skills:
 # Run path reference validation (catches wrong path errors)
 python -m pytest tests/test_path_references.py -v
 
-# Run installation test
-./tests/test_install.sh
-
 # Run all tests
 python -m pytest tests/ -v
 ```
@@ -104,7 +101,46 @@ python -m pytest tests/ -v
 **What tests catch:**
 - Wrong paths like `~/.wukong/skills/` (should be `~/.claude/skills/`)
 - References to non-existent files
-- Installation script failures
+- Module import errors
+
+### Before Creating PR (IMPORTANT!)
+
+> **[P005] Local Tests ≠ CI Tests**: Local environment has installed modules
+> and dependencies that CI doesn't have. Always run the full CI check locally.
+
+```bash
+# Full CI check (mirrors GitHub Actions)
+./scripts/ci-check.sh
+
+# Quick check (skip installation test)
+./scripts/ci-check.sh --quick
+```
+
+**CI Check includes:**
+1. **Shell Lint** - `shellcheck install.sh` (style + errors)
+2. **Python Tests** - `pytest tests/ -v` (all test files)
+3. **Installation Test** - Verify install.sh works in clean directory
+
+**Common CI failures and fixes:**
+
+| CI Error | Cause | Fix |
+|----------|-------|-----|
+| ShellCheck SC2012 | `ls \| wc -l` | Use `find \| wc -l` |
+| ShellCheck SC2129 | Multiple `>>` redirects | Use `{ } >> file` |
+| ModuleNotFoundError | Test file missing sys.path | Add path setup at file top |
+| pytest collection error | Non-pytest file in tests/ | Move to `scripts/` |
+
+**Prerequisites:**
+```bash
+# macOS
+brew install shellcheck
+
+# Linux
+apt install shellcheck
+
+# Python
+pip install pytest
+```
 
 ## Version Control
 
