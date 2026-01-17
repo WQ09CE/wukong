@@ -703,7 +703,60 @@ PYTHON_SCRIPT
 fi
 
 # ============================================================
-# 6. 完成
+# 6. Shell Alias (optional)
+# ============================================================
+echo ""
+echo -e "${BLUE}Shell Alias Setup${NC}"
+echo ""
+echo "Add 'wukong' command to quickly start Claude with Wukong?"
+echo -e "  ${DIM}alias wukong='claude -p \"/wukong\"'${NC}"
+echo ""
+
+if [ "$FORCE_MODE" != true ]; then
+    read -p "Add shell alias? [y/N] " -r ADD_ALIAS
+else
+    ADD_ALIAS="n"
+fi
+
+if [[ $ADD_ALIAS =~ ^[Yy]$ ]]; then
+    # Detect shell config file
+    SHELL_NAME=$(basename "$SHELL")
+    case "$SHELL_NAME" in
+        zsh)
+            SHELL_RC="$HOME/.zshrc"
+            ;;
+        bash)
+            if [ -f "$HOME/.bash_profile" ] && [ "$(uname)" = "Darwin" ]; then
+                SHELL_RC="$HOME/.bash_profile"
+            else
+                SHELL_RC="$HOME/.bashrc"
+            fi
+            ;;
+        *)
+            SHELL_RC="$HOME/.${SHELL_NAME}rc"
+            ;;
+    esac
+
+    ALIAS_LINE="alias wukong='claude -p \"/wukong\"'"
+
+    # Check if alias already exists
+    if grep -q "alias wukong=" "$SHELL_RC" 2>/dev/null; then
+        echo -e "  ${YELLOW}[skip]${NC} Alias already exists in $SHELL_RC"
+    else
+        echo "" >> "$SHELL_RC"
+        echo "# Wukong - Claude Code multi-agent orchestrator" >> "$SHELL_RC"
+        echo "$ALIAS_LINE" >> "$SHELL_RC"
+        echo -e "  ${GREEN}[ok]${NC} Added alias to $SHELL_RC"
+        echo ""
+        echo -e "  ${YELLOW}Run this to activate now:${NC}"
+        echo -e "    source $SHELL_RC"
+        echo ""
+        echo -e "  ${DIM}Or open a new terminal.${NC}"
+    fi
+fi
+
+# ============================================================
+# 7. 完成
 # ============================================================
 echo ""
 echo -e "${GREEN}Done!${NC}"

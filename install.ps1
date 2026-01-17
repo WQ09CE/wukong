@@ -947,7 +947,47 @@ if (-not $AllOk) {
 }
 
 # ============================================================
-# 8. Cleanup and finish
+# 8. PowerShell Alias (optional)
+# ============================================================
+
+Write-Host ""
+Write-ColorOutput "Shell Alias Setup" "Cyan"
+Write-Host ""
+Write-Host "Add 'wukong' command to quickly start Claude with Wukong?"
+Write-Host "  function wukong { claude -p `"/wukong`" `$args }" -ForegroundColor DarkGray
+Write-Host ""
+
+$AddAlias = Read-Host "Add PowerShell function? [y/N]"
+
+if ($AddAlias -match "^[Yy]$") {
+    # Ensure profile exists
+    if (-not (Test-Path $PROFILE)) {
+        New-Item -ItemType File -Path $PROFILE -Force | Out-Null
+        Write-Step "ok" "Created PowerShell profile: $PROFILE"
+    }
+
+    $FunctionLine = 'function wukong { claude -p "/wukong" $args }'
+
+    # Check if function already exists
+    $ProfileContent = Get-Content $PROFILE -Raw -ErrorAction SilentlyContinue
+    if ($ProfileContent -match "function wukong") {
+        Write-Step "skip" "Function already exists in `$PROFILE" "Yellow"
+    }
+    else {
+        Add-Content -Path $PROFILE -Value ""
+        Add-Content -Path $PROFILE -Value "# Wukong - Claude Code multi-agent orchestrator"
+        Add-Content -Path $PROFILE -Value $FunctionLine
+        Write-Step "ok" "Added function to $PROFILE"
+        Write-Host ""
+        Write-Host "  Run this to activate now:" -ForegroundColor Yellow
+        Write-Host "    . `$PROFILE"
+        Write-Host ""
+        Write-Host "  Or open a new PowerShell window." -ForegroundColor DarkGray
+    }
+}
+
+# ============================================================
+# 9. Cleanup and finish
 # ============================================================
 
 # Cleanup temp directory if we downloaded from GitHub
