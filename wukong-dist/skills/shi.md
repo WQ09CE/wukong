@@ -30,9 +30,8 @@
 │       ├── hui-output.json         # 慧模块完整输出
 │       └── shi-result.json         # 识模块写入结果
 ├── anchors/                        # 锚点存储
-│   ├── projects/                   # 按项目分文件
-│   │   └── {project}.md            # 项目级锚点
-│   └── global.md                   # 全局锚点 (跨项目)
+│   └── projects/                   # 按项目分文件
+│       └── {project}.md            # 项目级锚点
 └── index.json                      # 会话索引
 ```
 
@@ -258,9 +257,6 @@ PROJECT_NAME=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")
 
 # Read project-specific anchors
 cat ~/.wukong/context/anchors/projects/${PROJECT_NAME}.md
-
-# Read global anchors
-cat ~/.wukong/context/anchors/global.md
 ```
 
 ### 查询会话数据
@@ -302,7 +298,6 @@ for session in project_sessions:
 |----------|------|
 | 会话索引 | `~/.wukong/context/index.json` |
 | 项目锚点 | `~/.wukong/context/anchors/projects/{project}.md` |
-| 全局锚点 | `~/.wukong/context/anchors/global.md` |
 | 会话缩形态 | `~/.wukong/context/sessions/{session_dir}/compact.md` |
 | 会话慧输出 | `~/.wukong/context/sessions/{session_dir}/hui-output.json` |
 | 会话识结果 | `~/.wukong/context/sessions/{session_dir}/shi-result.json` |

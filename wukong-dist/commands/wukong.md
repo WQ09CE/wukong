@@ -112,6 +112,48 @@ else:
 | **Refactor** | "Refactor...", "Clean up..." | [眼]→[意]→[身]→[鼻+舌] |
 | **Direct** | Simple, trivial changes | Execute directly |
 
+## Progress Display Protocol (进度显示协议)
+
+> 在工作流执行过程中，通过追加式输出显示进度状态。
+
+**进度显示时机：**
+1. **工作流开始时** - 输出完整进度图（所有 Phase）
+2. **每个 Phase 开始时** - 输出当前状态行
+3. **分身完成时** - 更新该分身状态
+4. **工作流结束时** - 输出最终状态
+
+**状态符号：**
+```
+ = done (完成)
+ = running (进行中)
+ = pending (待执行)
+ = failed (失败)
+```
+
+**输出格式：**
+```
+Progress: [ear+eye] -> [mind] -> [body] -> [tongue+nose]
+--------------------------------------------------------
+ Phase 0: ear completed | eye completed
+ Phase 1: mind running...
+ Phase 2: body pending
+ Phase 3: tongue+nose pending
+```
+
+**CLI 命令：**
+```bash
+# 显示追加式进度
+python3 ~/.wukong/runtime/cli.py progress --line
+```
+
+**召唤分身时的进度输出：**
+
+1. **召唤前** - 输出即将执行的 Phase 状态
+2. **召唤后** - 更新分身状态为 "running..."
+3. **完成后** - 更新分身状态为 "completed" 或 "FAILED"
+
+---
+
 ## Summoning Avatars (召唤分身)
 
 **召唤前声明：**

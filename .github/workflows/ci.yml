@@ -84,8 +84,9 @@ jobs:
           mkdir -p ~/.claude
           echo '{}' > ~/.claude/settings.json
 
-          # Run install with hook registration (answer 'y')
-          echo "y" | bash install.sh test-install
+          # Run install with hook registration
+          # Inputs: hooks=y, permissions=y, alias=n
+          printf 'y\ny\nn\n' | bash install.sh test-install
 
       - name: Verify hook registration
         run: |
@@ -114,7 +115,8 @@ jobs:
       - name: Run installation
         run: |
           # Run from repo root so install.sh finds wukong-dist
-          bash install.sh test-install <<< "n"
+          # Inputs: hooks=n, permissions=n, alias=n
+          printf 'n\nn\nn\n' | bash install.sh test-install
 
       - name: Verify installation
         run: |

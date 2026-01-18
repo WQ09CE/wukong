@@ -6,6 +6,7 @@ Usage:
     python3 ~/.wukong/runtime/cli.py analyze "修复登录bug"
     python3 ~/.wukong/runtime/cli.py create --track fix "修复登录bug"
     python3 ~/.wukong/runtime/cli.py status
+    python3 ~/.wukong/runtime/cli.py progress
     python3 ~/.wukong/runtime/cli.py next
     python3 ~/.wukong/runtime/cli.py complete <node_id> --summary "..."
     python3 ~/.wukong/runtime/cli.py fail <node_id> --reason "..."
@@ -32,6 +33,7 @@ from artifact_manager import ArtifactManager
 from anchor_manager import AnchorManager
 from metrics import MetricsCollector, get_default_collector
 from health_monitor import HealthMonitor, HealthStatus
+from visualizer import Visualizer, get_default_visualizer
 
 
 # Default paths
@@ -220,7 +222,17 @@ def print_human_readable(result: Dict[str, Any]) -> None:
 
 
 def analyze_task(task: str) -> Dict[str, Any]:
-    """Analyze task and select appropriate track."""
+    """
+    Analyze task and select appropriate track (L0 rule-based).
+
+    Returns a result dict with:
+    - track: selected track
+    - confidence: confidence score (0.0-1.0)
+    - keywords_matched: matched keywords
+    - phases: execution phases
+    - needs_llm: True if confidence < 0.7 (suggest calling Haiku scheduler)
+    - routed_by: "L0" to indicate rule-based routing
+    """
     task_lower = task.lower()
 
     best_track = "direct"
@@ -244,11 +256,16 @@ def analyze_task(task: str) -> Dict[str, Any]:
     if not matched_keywords:
         best_confidence = 0.3
 
+    # Determine if LLM (Haiku scheduler) is needed
+    needs_llm = best_confidence < 0.7
+
     return {
         "track": best_track,
         "confidence": round(best_confidence, 2),
         "keywords_matched": matched_keywords,
         "phases": TRACK_PHASES.get(best_track, TRACK_PHASES["direct"]),
+        "needs_llm": needs_llm,
+        "routed_by": "L0",
     }
 
 
@@ -928,16 +945,47 @@ def visualize_graph(include_status: bool = True) -> str:
     Returns:
         Mermaid diagram string wrapped in code fence
     """
-    if not DEFAULT_TASKGRAPH_FILE.exists():
-        return "No active task graph to visualize"
-
-    with open(DEFAULT_TASKGRAPH_FILE, "r", encoding="utf-8") as f:
-        graph = json.load(f)
-
-    scheduler = Scheduler(DEFAULT_TEMPLATES_DIR)
-    mermaid_code = scheduler.render_mermaid(graph, include_status=include_status)
-
+    visualizer = get_default_visualizer()
+    mermaid_code = visualizer.render_mermaid(include_status=include_status)
     return f"```mermaid\n{mermaid_code}\n```"
+
+
+def get_progress(compact: bool = False, output_format: str = "terminal", line: bool = False) -> str:
+    """
+    Get task execution progress visualization.
+
+    Args:
+        compact: If True, use compact single-line format
+        output_format: Output format - "terminal", "json", or "mermaid"
+        line: If True, use append-style progress display (追加式进度)
+
+    Returns:
+        Progress visualization string
+    """
+    visualizer = get_default_visualizer()
+
+    # Import append-style progress functions
+    from visualizer import render_full_progress
+
+    if line:
+        # Use append-style progress display
+        return render_full_progress()
+
+    snapshot = visualizer.collect_snapshot()
+
+    if snapshot is None:
+        if output_format == "json":
+            return json.dumps({"error": "No active task graph"}, indent=2)
+        return "No active task graph"
+
+    if output_format == "json":
+        return json.dumps(snapshot.to_dict(), indent=2, ensure_ascii=False)
+    elif output_format == "mermaid":
+        return f"```mermaid\n{visualizer.render_mermaid()}\n```"
+    elif compact:
+        return visualizer.render_compact(snapshot)
+    else:
+        return visualizer.render_terminal(snapshot)
 
 
 # ============================================================
@@ -1117,12 +1165,20 @@ Examples:
     %(prog)s analyze "修复登录bug"
     %(prog)s create --track fix "修复登录bug"
     %(prog)s status
+    %(prog)s progress
     %(prog)s next
     %(prog)s start eye_explore
     %(prog)s complete eye_explore --summary "Found the bug in auth.py"
     %(prog)s fail body_implement --reason "Build error"
     %(prog)s abort --reason "User requested"
     %(prog)s resume
+
+Progress Visualization Commands:
+    %(prog)s progress                          # Show terminal progress display
+    %(prog)s progress --compact                # Show compact single-line format
+    %(prog)s progress --line                   # Show append-style progress (Phase-by-phase)
+    %(prog)s progress --format json            # Output as JSON
+    %(prog)s progress --format mermaid         # Output as Mermaid diagram
 
 Health Monitoring Commands:
     %(prog)s health                           # Check health of all nodes
@@ -1157,6 +1213,11 @@ Anchor Commands:
         help="Analyze task and select appropriate track",
     )
     analyze_parser.add_argument("task", help="Task description to analyze")
+    analyze_parser.add_argument(
+        "--llm",
+        action="store_true",
+        help="Enable LLM-based classification (requires ANTHROPIC_API_KEY)",
+    )
 
     # create command
     create_parser = subparsers.add_parser(
@@ -1250,6 +1311,28 @@ Anchor Commands:
         "--no-status",
         action="store_true",
         help="Exclude status colors from diagram",
+    )
+
+    # progress command
+    progress_parser = subparsers.add_parser(
+        "progress",
+        help="Show task execution progress visualization",
+    )
+    progress_parser.add_argument(
+        "--compact", "-c",
+        action="store_true",
+        help="Use compact single-line format",
+    )
+    progress_parser.add_argument(
+        "--format", "-f",
+        choices=["terminal", "json", "mermaid"],
+        default="terminal",
+        help="Output format (default: terminal)",
+    )
+    progress_parser.add_argument(
+        "--line", "-l",
+        action="store_true",
+        help="Use append-style progress display (Phase-by-phase)",
     )
 
     # health command
@@ -1443,7 +1526,22 @@ Anchor Commands:
     result: Dict[str, Any] = {}
 
     if args.command == "analyze":
-        result = analyze_task(args.task)
+        if getattr(args, "llm", False):
+            # Use Smart Router with LLM
+            try:
+                from smart_router import SmartRouter
+                router = SmartRouter(
+                    templates_dir=DEFAULT_TEMPLATES_DIR,
+                    enable_llm=True,
+                )
+                routing_result = router.route_sync(args.task)
+                result = routing_result.to_dict()
+            except ImportError as e:
+                result = {"error": f"Smart Router not available: {e}", "success": False}
+            except Exception as e:
+                result = {"error": f"Smart Router error: {e}", "success": False}
+        else:
+            result = analyze_task(args.task)
     elif args.command == "create":
         result = create_taskgraph(args.track, args.task, args.working_dir)
     elif args.command == "status":
@@ -1468,6 +1566,15 @@ Anchor Commands:
         # Visualize outputs directly, not as JSON
         mermaid_output = visualize_graph(include_status=not args.no_status)
         print(mermaid_output)
+        sys.exit(0)
+    elif args.command == "progress":
+        # Progress outputs directly, not as JSON (unless --format json)
+        progress_output = get_progress(
+            compact=args.compact,
+            output_format=args.format,
+            line=args.line,
+        )
+        print(progress_output)
         sys.exit(0)
     elif args.command == "health":
         result = get_health(node_id=args.node_id)

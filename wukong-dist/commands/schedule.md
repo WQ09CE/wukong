@@ -1,96 +1,183 @@
 # Schedule Command (调度命令)
 
 > **智能调度** - 分析任务，规划最优执行路径
+>
+> **分层路由**: L0 规则匹配 (0ms) → L1 Haiku 分身 (~300ms, 仅需时)
 
 ## Usage (使用方式)
 
 ```
 /schedule <任务描述>
 /schedule --dry-run <任务描述>    # 只分析不执行
-/schedule --plan <任务描述>       # 生成完整执行计划
+/schedule --force-llm <任务描述>  # 强制使用 Haiku 分身
 ```
 
-## What This Command Does
+## Two-Layer Routing Architecture
 
-1. **分析任务** - 检测任务类型和复杂度
-2. **选择轨道** - Feature / Fix / Refactor / Direct
-3. **规划分身** - 确定需要哪些分身、执行顺序、并行策略
-4. **检测冲突** - 文件领地冲突检测
-5. **生成计划** - 输出可执行的调度计划
-
-## Execution Flow
-
-```python
-# 1. 导入调度器 (跨平台路径发现，用户级优先)
-import sys
-import os
-
-# 发现链：用户级 → 项目级
-runtime_paths = [
-    os.path.expanduser("~/.wukong/runtime"),  # 用户级 (优先)
-    ".wukong/runtime",                         # 项目级 (fallback)
-]
-for path in runtime_paths:
-    if os.path.isdir(path):
-        sys.path.insert(0, path)
-        break
-
-from scheduler import WukongScheduler, AvatarType, TrackType, AVATAR_CONFIG, TRACK_DAG
-
-# 2. 创建调度器实例
-scheduler = WukongScheduler()
-
-# 3. 分析任务
-task_description = "{user_input}"
-track = scheduler.detect_track(task_description)
-
-# 4. 规划执行
-phases = scheduler.plan_track(track, task_description)
-
-# 5. 输出计划
 ```
+用户任务
+    ↓
+┌─────────────────────────────────────┐
+│  L0: Python 规则匹配 (0ms)           │
+│  - @ 语法解析                        │
+│  - 关键词匹配                        │
+│  - 返回 track + confidence          │
+└─────────────────────────────────────┘
+    ↓
+confidence >= 0.7? ──YES──→ 直接输出结果
+    │
+    NO (needs_llm=true)
+    ↓
+┌─────────────────────────────────────┐
+│  L1: Haiku 调度分身 (~300ms)         │
+│  - Task(model="haiku")              │
+│  - 精确分类 + 复杂度判断             │
+│  - 返回 track + complexity + phases │
+└─────────────────────────────────────┘
+    ↓
+输出最终结果
+```
+
+## Execution Steps
+
+### Step 1: L0 规则匹配
+
+运行 Python CLI 进行快速分析:
+
+```bash
+python3 ~/.wukong/runtime/cli.py analyze "{user_task}"
+```
+
+解析返回的 JSON:
+- `track`: 轨道 (fix/feature/refactor/direct)
+- `confidence`: 置信度 (0.0-1.0)
+- `needs_llm`: 是否需要调用 Haiku 分身
+- `phases`: 执行阶段
+
+### Step 2: 判断是否需要 L1
+
+**跳过 L1 的条件**:
+- `confidence >= 0.7`
+- 用户未指定 `--force-llm`
+
+**需要 L1 的条件**:
+- `confidence < 0.7` (needs_llm=true)
+- 用户指定 `--force-llm`
+
+### Step 3: L1 Haiku 调度分身 (如需)
+
+如果需要 L1，召唤 Haiku 调度分身:
+
+```
+召唤 Haiku 调度分身:
+- 分身: scheduler (调度分身)
+- 模型: haiku
+- 原因: L0 置信度不足，需要更精确的任务分类
+- 技能: 读取 scheduler.md skill
+- 预期: JSON 格式的 {track, complexity, confidence, reasoning, phases}
+```
+
+**Task 工具调用**:
+```json
+{
+  "subagent_type": "haiku",
+  "model": "haiku",
+  "prompt": "你是 Wukong 的调度分身...\n\nTASK: {user_task}\nL0_RESULT: {l0_result_json}\n\n请分析任务并输出 JSON 格式的调度结果。"
+}
+```
+
+**Haiku 分身 Prompt 模板**:
+```
+你是 Wukong 的调度分身 - 专门负责分析任务并选择最佳执行轨道。
+
+## Input
+TASK: {user_task}
+L0_RESULT: {l0_result_json}
 
 ## Output Format
+输出以下 JSON 格式（无其他文字）:
+{
+  "track": "feature|fix|refactor|research|direct",
+  "complexity": "simple|medium|complex",
+  "confidence": 0.0-1.0,
+  "reasoning": "简短理由",
+  "phases": [
+    {"phase": 0, "nodes": ["agent1", "agent2"], "parallel": true},
+    {"phase": 1, "nodes": ["agent3"], "parallel": false}
+  ]
+}
 
-当用户运行 `/schedule <任务>` 时，输出以下格式：
+## Track Definitions
+- feature: 添加新功能、实现新特性
+- fix: 修复 bug、解决问题
+- refactor: 重构、优化、清理代码
+- research: 探索、调研、了解代码
+- direct: 简单操作、单行修改
+
+## Complexity Definitions
+- simple: 单文件、<50行改动
+- medium: 2-3个文件、中等改动
+- complex: 4+文件、架构变更
+
+## Agent Nodes
+- eye_explore: 眼分身 (探索)
+- ear_understand: 耳分身 (需求)
+- nose_analyze / nose_review: 鼻分身 (分析/审查)
+- tongue_verify: 舌分身 (测试)
+- body_implement: 斗战胜佛 (实现)
+- mind_design: 意分身 (设计)
+```
+
+### Step 4: 输出结果
+
+输出以下 Markdown 格式:
 
 ```markdown
 ## 调度分析结果
 
+### 路由信息
+- **路由层级**: {L0 / L1}
+- **置信度**: {confidence}%
+
 ### 任务信息
 - **描述**: {task_description}
-- **检测轨道**: {track} (Feature/Fix/Refactor/Direct)
+- **检测轨道**: {track} (Feature/Fix/Refactor/Research/Direct)
+- **复杂度**: {complexity} (如有)
 
 ### 执行计划
 
-| Phase | 分身 | 模型 | 后台 | 依赖 |
-|-------|------|------|------|------|
-| 1 | 👁️ 眼 + 👂 耳 | haiku | 是 | - |
-| 2 | 🧠 意 | opus | 否 | Phase 1 |
-| 3 | ⚔️ 身 | sonnet | 否 | Phase 2 |
-| 4 | 👅 舌 + 👃 鼻 | sonnet/haiku | 是 | Phase 3 |
-
-### 并行策略
-- **Phase 1**: 可并行 (CHEAP 分身，10+ 并发)
-- **Phase 2-3**: 串行 (EXPENSIVE 分身，1 并发)
-- **Phase 4**: 可并行 (MEDIUM + CHEAP)
-
-### 预估
-- **总阶段**: 4
-- **可并行阶段**: 2
-- **EXPENSIVE 调用**: 2 (意 + 身)
+| Phase | 分身 | 并行 | 说明 |
+|-------|------|------|------|
+| 0 | 👁️ 眼 + 👂 耳 | 是 | 探索 + 需求理解 |
+| 1 | 🧠 意 | 否 | 架构设计 |
+| 2 | ⚔️ 身 | 否 | 代码实现 |
+| 3 | 👅 舌 + 👃 鼻 | 是 | 测试 + 审查 |
 
 ### 建议操作
 {根据分析给出建议}
 ```
 
-## Integration with Wukong
+## Now Execute
 
-此命令与 Wukong 工作流无缝集成：
+读取用户输入的任务描述，执行以下流程:
 
-1. **独立使用**: `/schedule 添加用户认证` - 只分析，不执行
-2. **配合 Wukong**: 先 `/schedule` 分析，再 `/wukong` 执行
-3. **Dry-run 模式**: `/schedule --dry-run` 验证计划是否合理
+1. **解析参数**
+   - `--dry-run`: 只输出分析，不建议执行
+   - `--force-llm`: 强制使用 Haiku 分身
+   - 无参数: 自动判断是否需要 L1
+
+2. **运行 L0 分析**
+   ```bash
+   python3 ~/.wukong/runtime/cli.py analyze "{user_task}"
+   ```
+
+3. **判断是否需要 L1**
+   - 如果 `needs_llm=true` 或 `--force-llm`
+   - 则召唤 Haiku 调度分身 (使用 Task 工具)
+
+4. **格式化输出**
+   - 使用上面定义的 Markdown 格式
+   - 包含路由层级信息
 
 ## Scheduler Configuration Reference
 
@@ -110,47 +197,14 @@ phases = scheduler.plan_track(track, task_description)
 **Feature**: 耳+眼 → 意 → 身 → 舌+鼻
 **Fix**: 眼+鼻 → 身 → 舌
 **Refactor**: 眼 → 意 → 身 → 鼻+舌
+**Research**: 眼
 **Direct**: 直接执行
-
-## Now Execute
-
-读取用户输入的任务描述，执行以下步骤：
-
-1. **解析参数**
-   ```
-   --dry-run: 只输出分析，不建议执行
-   --plan: 输出详细执行计划 + TodoWrite 格式
-   无参数: 输出分析 + 建议下一步
-   ```
-
-2. **运行调度分析**
-   ```python
-   # 使用上面的路径发现机制导入 runtime scheduler
-   from scheduler import WukongScheduler, TrackType
-
-   scheduler = WukongScheduler()
-   track = scheduler.detect_track(user_task)
-   phases = scheduler.plan_track(track, user_task)
-   ```
-
-3. **格式化输出**
-   - 使用上面定义的 Markdown 格式
-   - 包含执行建议
-
-4. **可选：生成 TodoWrite**
-   如果用户使用 `--plan`，额外生成：
-   ```python
-   from todo_integration import TodoWriteIntegration
-   integration = TodoWriteIntegration(scheduler)
-   todo_call = integration.generate_todo_call()
-   # 输出可直接用于 TodoWrite 的 JSON
-   ```
 
 ## Error Handling
 
-- 如果调度器模块不存在，提示用户检查 `~/.wukong/runtime/` 或 `.wukong/runtime/` 目录
+- 如果 Python CLI 不存在，提示检查 `~/.wukong/runtime/` 目录
+- 如果 Haiku 分身返回非 JSON，尝试提取 JSON 部分
 - 如果任务描述为空，提示用户提供任务
-- 如果检测到复杂冲突，建议拆分任务
 
 ---
 
