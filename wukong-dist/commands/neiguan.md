@@ -122,7 +122,6 @@ fi
 # MUST execute - Detect project name from git root or current directory
 PROJECT_NAME=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")
 PROJECT_ANCHORS=~/.wukong/context/anchors/projects/${PROJECT_NAME}.md
-GLOBAL_ANCHORS=~/.wukong/context/anchors/global.md
 
 # Read project-specific anchors
 if [ -f "$PROJECT_ANCHORS" ]; then
@@ -131,18 +130,10 @@ if [ -f "$PROJECT_ANCHORS" ]; then
 else
     echo "PROJECT_ANCHORS_NOT_EXIST: $PROJECT_ANCHORS"
 fi
-
-# Read global anchors
-if [ -f "$GLOBAL_ANCHORS" ]; then
-    echo "=== Global Anchors ==="
-    cat "$GLOBAL_ANCHORS"
-else
-    echo "GLOBAL_ANCHORS_NOT_EXIST"
-fi
 ```
 
 **Purpose:**
-- Check for related existing anchors (both project-level and global)
+- Check for related existing anchors (project-level)
 - Avoid duplicate entries
 - Find patterns across sessions
 
@@ -257,7 +248,6 @@ Before finishing, confirm:
 - Session data: `~/.wukong/context/sessions/{session_dir}/compact.md`
 - Session hui output: `~/.wukong/context/sessions/{session_dir}/hui-output.json`
 - Project anchors: `~/.wukong/context/anchors/projects/{project}.md`
-- Global anchors: `~/.wukong/context/anchors/global.md`
 
 **Introspection Dimensions:**
 1. Avatar coordination (分身配合)

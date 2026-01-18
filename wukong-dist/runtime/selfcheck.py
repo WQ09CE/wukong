@@ -153,6 +153,8 @@ def check_runtime_modules() -> bool:
         "artifact_manager.py",
         "anchor_manager.py",
         "metrics.py",
+        "visualizer.py",
+        "health_monitor.py",
     ]
 
     found, missing = check_files_exist(runtime_dir, runtime_files)

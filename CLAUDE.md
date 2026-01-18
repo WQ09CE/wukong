@@ -103,6 +103,31 @@ python -m pytest tests/ -v
 - References to non-existent files
 - Module import errors
 
+### Tongue Avatar Test Checklist (舌分身测试清单)
+
+> 当召唤舌分身(@舌/@tester)执行测试时，必须完成以下全部步骤：
+
+```bash
+# 1. Shell Lint (如有 .sh 文件修改)
+shellcheck install.sh
+
+# 2. Python 语法检查
+python3 -m py_compile <modified_file.py>
+
+# 3. 单元测试
+python3 -m pytest tests/ -v --tb=short
+
+# 4. 完整 CI Check (提交前必须)
+./scripts/ci-check.sh
+```
+
+**验收标准:**
+- [ ] shellcheck 无错误
+- [ ] pytest 全部通过 (0 failed)
+- [ ] CI check 全部通过
+
+> **注意**: 只运行 pytest 不运行 CI check = 不完整测试
+
 ### Before Creating PR (IMPORTANT!)
 
 > **[P005] Local Tests ≠ CI Tests**: Local environment has installed modules

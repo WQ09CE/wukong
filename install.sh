@@ -137,6 +137,7 @@ WUKONG_AGENTS=(
     "tongue.md"
     "body.md"
     "mind.md"
+    "scheduler.md"
 )
 
 show_clean_preview() {
