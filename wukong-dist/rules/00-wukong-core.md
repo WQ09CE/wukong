@@ -27,6 +27,7 @@ Q0.5 [MUST] Scheduler 分析 (跳过条件: Q0=是 或 显式@指定):
      $ python3 ~/.wukong/runtime/cli.py analyze "任务描述"
      → track: ___ | confidence: ___
      → phases: ___
+     → 若 needs_llm: true → 调用 L1，见 /wukong L1 Scheduler
 
 Q1. 探索/研究？      [是/否] → 是则 @眼
 Q2. 代码修改？       [是/否] 预估 __ 行 → >10行则 @身
@@ -70,58 +71,11 @@ Q4. 独立文件数？     __ 个 → ≥2则并行
 
 > **联动**: 详细检查规则见 `~/.claude/skills/jie.md` 的"本体越界检查"章节
 
-### 自检问题详解
+### Scheduler 集成 (Q0.5)
 
-```
-┌─────────────────────────────────────────┐
-│  Q0. 是否匹配某个 Skill/Command？        │
-│      → 检查 Skill 工具的 Available skills │
-│      → 匹配 → 调用 Skill 工具，完成！     │
-│                                         │
-│  Q0.5 [MUST] 调用 Scheduler 分析:        │
-│      $ python3 ~/.wukong/runtime/cli.py │
-│        analyze "任务描述"                │
-│      → 必须输出 track/confidence/phases  │
-│      → 跳过条件: Q0=是 或 用户显式@指定  │
-│                                         │
-│  Q1. 这是探索/研究/调研任务吗？           │
-│      → 是 → 召唤眼分身 (后台)            │
-│                                         │
-│  Q2. 需要写代码吗？预估多少行？           │
-│      → >10行 → 召唤斗战胜佛              │
-│                                         │
-│  Q3. 需要设计/架构决策吗？                │
-│      → 是 → 召唤意分身                   │
-│                                         │
-│  Q4. 涉及几个独立文件/模块？              │
-│      → ≥2个 → 并行召唤多个分身           │
-│                                         │
-│  全部 NO → 本体可直接执行                │
-└─────────────────────────────────────────┘
-```
+> 跳过条件: Q0=是 或 用户显式 `@分身` 指定
 
-### Scheduler 集成 (Q0.5 详解)
-
-> ⛔ **MUST 调用** - 这是 CHECKPOINT 的强制组成部分
-
-**跳过条件** (仅以下情况可跳过):
-- Q0=是 (匹配到 Skill)
-- 用户显式使用 `@分身` 语法指定
-
-**调用命令**:
-```bash
-python3 ~/.wukong/runtime/cli.py analyze "用户任务描述"
-```
-
-**输出要求**: 必须在 CHECKPOINT 中填写 track/confidence/phases
-
-**根据分析结果执行**: 按 Phase 顺序召唤分身，同 Phase 可并行，遵循 Background/Cost 配置
-
-### Skill 工具匹配 (Q0 详解)
-
-> **优先级最高** - 如果任务匹配 Skill，直接调用，不走分身流程
-
-**发现方式**: 查看 Skill 工具描述中的 "Available skills" 列表
+按 Scheduler 返回的 phases 顺序召唤分身，同 Phase 可并行。
 
 ### 触发词 → 分身速查
 
@@ -181,6 +135,21 @@ python3 ~/.wukong/runtime/cli.py analyze "用户任务描述"
 - `→` = Phase 依赖，必须串行
 - 详见 `~/.wukong/runtime/scheduler.py` 中的 DAG 定义
 
+## Progress Display Protocol (进度显示协议)
+
+> 工作流执行时通过追加式输出显示进度状态。
+
+**状态符号：** `✓` done | `●` running | `○` pending | `✗` failed
+
+**输出格式：**
+```
+Progress: [ear+eye] -> [mind] -> [body] -> [tongue+nose]
+--------------------------------------------------------
+✓ Phase 0: ear completed | eye completed
+● Phase 1: mind running...
+○ Phase 2: body pending
+```
+
 ## Summoning (召唤分身)
 
 > **强制**: 4 部分声明 + 7 段式 Prompt → 详见 `~/.claude/skills/summoning.md`
@@ -195,13 +164,11 @@ python3 ~/.wukong/runtime/cli.py analyze "用户任务描述"
 
 ## Parallelization (筋斗云)
 
-> 成本路由 + 并行模式 + 文件领地 → 详见 `~/.claude/skills/jindouyun.md`
+> 成本路由 + 后台模式 → 详见 `jindouyun.md`
 
-**速查**: CHEAP(眼/耳/鼻) 10+并发后台 | MEDIUM(舌) 2-3并发 | EXPENSIVE(身/意) 1阻塞
-
-## Background Mode (后台模式)
-
-> 眼/鼻 强制后台，身/意 禁止后台 → 详见 `~/.claude/skills/jindouyun.md`
+- **CHEAP** (眼/耳/鼻): 10+ 并发，眼/鼻 强制后台
+- **MEDIUM** (舌): 2-3 并发，可选后台
+- **EXPENSIVE** (身/意): 1 阻塞，禁止后台
 
 ## Verification (验证金规)
 
@@ -248,56 +215,23 @@ python3 ~/.wukong/runtime/cli.py analyze "用户任务描述"
 ## Constraints (紧箍咒)
 
 **NEVER:**
-- 跳过验证
-- 未读代码就修改
-- 本体写大量代码
+- 跳过 CHECKPOINT 直接执行
+- 本体写代码超过 10 行
 - 串行执行可并行任务
-- 直接写代码超过10行
-- **违反分身职责边界 (Do/Don't)**
-- **输出不符合 Output Contract**
-- **使用未授权的工具 (Tool Allowlist)**
-- **召唤分身时缺少 4 部分声明**
-- **批量标记 Todo 完成**
+- 未验证就报告完成
+- 违反分身职责边界
 
 **ALWAYS:**
-- 验证分身输出
+- 验证分身输出 (文件存在/构建通过/测试通过)
 - 遵循现有代码风格
-- 保持构建/测试通过
-- 记录重要决策
-- **分身输出后执行戒定慧检查**
-- **遵守职能三件套约束**
-- **使用 7 段式 Prompt 模板**
-- **痴迷式 Todo 追踪 (逐个标记完成)**
+- 逐个标记 Todo 完成 (不批量)
 
 ## Extended (扩展能力)
 
-需要详细指导时，读取 skills：
-- `~/.claude/skills/jie.md` - 戒：规则/安全检查
-- `~/.claude/skills/ding.md` - 定：可复现验证
-- `~/.claude/skills/hui.md` - 慧：反思与沉淀
-- `~/.claude/skills/shi.md` - 识：信息存储
-- `~/.claude/skills/jindouyun.md` - 筋斗云：并行执行协议
-- `~/.claude/skills/summoning.md` - 召唤：4部分声明 + 7段式Prompt
-- `~/.claude/skills/orchestration.md` - 轨道编排详细模式
+**Skills** (按需读取):
+- `jie.md` - 戒：分身边界/Do/Don't
+- `jindouyun.md` - 筋斗云：并行协议
+- `summoning.md` - 召唤：7段式Prompt
 
-**Runtime 模块** (调度 + 状态 + 产物)：
-- `~/.wukong/runtime/cli.py` - 命令行接口
-- `~/.wukong/runtime/scheduler.py` - DAG 调度逻辑
-- `~/.wukong/runtime/state_manager.py` - 状态管理
-- `~/.wukong/runtime/artifact_manager.py` - 产物管理
-- `/schedule` 命令 - 独立调度分析 (`~/.claude/commands/schedule.md`)
-
-**Context 模块** (Snapshot + Aggregator)：
-- `~/.wukong/context/snapshot.py` - 不可变快照机制
-- `~/.wukong/context/importance.py` - 重要性标注系统 (HIGH/MEDIUM/LOW)
-- `~/.wukong/context/aggregator.py` - 结果自动聚合
-- `~/.wukong/context/cli.py` - 命令行接口
-
-**Context CLI 命令**：
-```bash
-# 生成快照注入
-python3 ~/.wukong/context/cli.py inject --context="..." --anchors='[...]'
-
-# 聚合后台分身结果
-python3 ~/.wukong/context/cli.py aggregate summary --compact
-```
+**Runtime**: `~/.wukong/runtime/cli.py` (调度/状态/产物)
+**Context**: `~/.wukong/context/cli.py` (快照/聚合)

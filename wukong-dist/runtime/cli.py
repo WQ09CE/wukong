@@ -1526,22 +1526,7 @@ Anchor Commands:
     result: Dict[str, Any] = {}
 
     if args.command == "analyze":
-        if getattr(args, "llm", False):
-            # Use Smart Router with LLM
-            try:
-                from smart_router import SmartRouter
-                router = SmartRouter(
-                    templates_dir=DEFAULT_TEMPLATES_DIR,
-                    enable_llm=True,
-                )
-                routing_result = router.route_sync(args.task)
-                result = routing_result.to_dict()
-            except ImportError as e:
-                result = {"error": f"Smart Router not available: {e}", "success": False}
-            except Exception as e:
-                result = {"error": f"Smart Router error: {e}", "success": False}
-        else:
-            result = analyze_task(args.task)
+        result = analyze_task(args.task)
     elif args.command == "create":
         result = create_taskgraph(args.track, args.task, args.working_dir)
     elif args.command == "status":
