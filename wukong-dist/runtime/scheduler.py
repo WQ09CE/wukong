@@ -15,7 +15,7 @@ from dataclasses import dataclass
 
 
 # Track types
-TRACK_TYPES = {"fix", "feature", "refactor", "direct"}
+TRACK_TYPES = {"fix", "feature", "refactor", "research", "direct"}
 
 # Node status values
 NODE_STATUS = {"pending", "running", "done", "failed", "blocked"}

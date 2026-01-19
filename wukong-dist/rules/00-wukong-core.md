@@ -27,7 +27,7 @@ Q0.5 [MUST] Scheduler 分析 (跳过条件: Q0=是 或 显式@指定):
      $ python3 ~/.wukong/runtime/cli.py analyze "任务描述"
      → track: ___ | confidence: ___
      → phases: ___
-     → 若 needs_llm: true → 调用 L1，见 /wukong L1 Scheduler
+     → 若 needs_llm: true → 调用 /schedule --force-llm
 
 Q1. 探索/研究？      [是/否] → 是则 @眼
 Q2. 代码修改？       [是/否] 预估 __ 行 → >10行则 @身

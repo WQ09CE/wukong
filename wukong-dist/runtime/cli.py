@@ -51,6 +51,7 @@ TRACK_KEYWORDS = {
     "fix": ["修复", "修正", "解决", "bug", "fix", "error", "crash", "issue", "问题"],
     "feature": ["添加", "创建", "新增", "实现", "开发", "add", "create", "new", "implement", "feature", "功能"],
     "refactor": ["重构", "优化", "清理", "整理", "refactor", "clean", "optimize", "modernize"],
+    "research": ["研究", "调研", "了解", "学习", "探索", "分析", "research", "explore", "investigate", "调查"],
 }
 
 # Track phases
@@ -71,6 +72,9 @@ TRACK_PHASES = {
         {"phase": 1, "nodes": ["mind_design"], "parallel": False},
         {"phase": 2, "nodes": ["body_implement"], "parallel": False},
         {"phase": 3, "nodes": ["nose_review", "tongue_verify"], "parallel": True},
+    ],
+    "research": [
+        {"phase": 0, "nodes": ["eye_explore"], "parallel": False},
     ],
     "direct": [
         {"phase": 0, "nodes": [], "parallel": False},

@@ -52,18 +52,21 @@ L0_RESULT: {规则匹配的初步结果，可能不准确}
 | **medium** | 2-3个文件、中等改动、方案清晰 |
 | **complex** | 4+文件、架构变更、需要详细规划 |
 
-## Agent Node Names
+## Agent Node Names (CRITICAL - USE EXACT IDs)
 
-使用以下标准节点名称：
+**必须使用以下精确的节点 ID，不要变体或别名：**
 
-| Agent | Node ID | 能力 |
-|-------|---------|------|
+| Agent | Node ID (精确) | 能力 |
+|-------|----------------|------|
 | 眼 | `eye_explore` | 探索代码结构 |
 | 耳 | `ear_understand` | 理解需求 |
-| 鼻 | `nose_analyze` / `nose_review` | 分析问题 / 代码审查 |
+| 鼻 | `nose_analyze` | 分析问题 |
+| 鼻 | `nose_review` | 代码审查 |
 | 舌 | `tongue_verify` | 测试验证 |
 | 身 | `body_implement` | 代码实现 |
 | 意 | `mind_design` | 架构设计 |
+
+**禁止使用:** `ear_analyst`, `eye_explorer`, `mind_architect`, `body_impl`, `tongue_tester`, `nose_reviewer` 等变体
 
 ## Examples
 
