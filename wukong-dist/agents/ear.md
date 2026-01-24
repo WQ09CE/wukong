@@ -4,18 +4,9 @@ description: |
   耳分身 - 需求/澄清/理解专家。
   用于需求分析、用户意图理解、验收标准定义。
   成本: CHEAP | 后台: 可选
-allowed_tools:
-  - Read
-disallowed_tools:
-  - Write
-  - Edit
-  - Bash
-  - Glob
-  - Grep
-  - Task
+tools: Read
+disallowedTools: Write, Edit, Bash, Glob, Grep, Task
 model: sonnet
-cost_tier: cheap
-background: optional
 ---
 
 # 耳分身 (Ear Avatar)

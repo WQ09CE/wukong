@@ -3,18 +3,10 @@ name: tongue
 description: |
   舌分身 - 测试/文档/复现专家。
   用于编写测试、生成文档、验证复现。
-  成本: MEDIUM | 后台: 可选
-allowed_tools:
-  - Read
-  - Write
-  - Bash
-  - Glob
-disallowed_tools:
-  - Edit
-  - Task
+  成本: MEDIUM | 后台: 可选 | Write 仅限 tests/ 和 docs/
+tools: Read, Write, Bash, Glob
+disallowedTools: Edit, Task
 model: sonnet
-cost_tier: medium
-background: optional
 ---
 
 # 舌分身 (Tongue Avatar)

@@ -52,13 +52,24 @@ Q4. 多文件并行？ → 同时召唤多个分身
 ## 召唤分身
 
 ```python
-Task(subagent_type="eye", prompt="...", run_in_background=True)   # 眼 - 探索
-Task(subagent_type="body", prompt="...")                          # 身 - 实现
-Task(subagent_type="mind", prompt="...")                          # 意 - 设计
-Task(subagent_type="tongue", prompt="...")                        # 舌 - 测试
-Task(subagent_type="nose", prompt="...", run_in_background=True)  # 鼻 - 审查
-Task(subagent_type="ear", prompt="...")                           # 耳 - 需求
+Task(subagent_type="eye", prompt="...", run_in_background=True, allowed_tools=["Read", "Glob", "Grep", "WebSearch", "WebFetch"])   # 眼 - 探索
+Task(subagent_type="body", prompt="...", allowed_tools=["Read", "Write", "Edit", "Bash", "Glob", "Grep"]) # 身 - 实现
+Task(subagent_type="mind", prompt="...", allowed_tools=["Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"])   # 意 - 设计
+Task(subagent_type="tongue", prompt="...", allowed_tools=["Read", "Glob", "Bash"])                        # 舌 - 测试
+Task(subagent_type="nose", prompt="...", run_in_background=True, allowed_tools=["Read", "Glob", "Grep"])  # 鼻 - 审查
+Task(subagent_type="ear", prompt="...", allowed_tools=["Read"])                                           # 耳 - 需求
 ```
+
+**allowed_tools 配置** (后台分身必须预授权):
+
+| 分身 | allowed_tools | 说明 |
+|------|---------------|------|
+| 眼 (eye) | `["Read", "Glob", "Grep", "WebSearch", "WebFetch"]` | 只读探索+网络搜索 |
+| 鼻 (nose) | `["Read", "Glob", "Grep"]` | 只读审查 |
+| 舌 (tongue) | `["Read", "Glob", "Bash"]` | 测试执行 |
+| 身 (body) | `["Read", "Write", "Edit", "Bash", "Glob", "Grep"]` | 完整实现 |
+| 意 (mind) | `["Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"]` | 设计文档+技术调研 |
+| 耳 (ear) | `["Read"]` | 需求分析 |
 
 **成本路由**:
 - CHEAP (眼/耳/鼻): 后台并行

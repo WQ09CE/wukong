@@ -9,7 +9,7 @@
 Wukong 使用六根分身系统。**本体是调度者，不是执行者。**
 
 - 核心协议: `~/.claude/rules/00-wukong-core.md`
-- 分身定义: `~/.wukong/agents/*.md`
+- 分身定义: `~/.claude/agents/*.md`
 - 分身边界: `~/.claude/skills/jie.md`
 
 调用分身使用 Task tool:
@@ -27,15 +27,15 @@ Source (repo)              →  Installed (user home)
 wukong-dist/rules/         →  ~/.claude/rules/
 wukong-dist/skills/        →  ~/.claude/skills/
 wukong-dist/commands/      →  ~/.claude/commands/
-wukong-dist/agents/        →  ~/.wukong/agents/      ← Agent definitions
+wukong-dist/agents/        →  ~/.claude/agents/      ← Agent definitions (Claude Code 要求)
 wukong-dist/hooks/         →  ~/.wukong/hooks/
 wukong-dist/context/       →  ~/.wukong/context/
 wukong-dist/templates/     →  ~/.wukong/templates/
 ```
 
 **Key Insight:**
-- `~/.claude/` = Claude Code configuration (rules, skills, commands)
-- `~/.wukong/` = Runtime data (hooks, context, agents, notepads, plans)
+- `~/.claude/` = Claude Code configuration (rules, skills, commands, agents)
+- `~/.wukong/` = Runtime data (hooks, context, notepads, plans)
 
 ## Development Workflow
 

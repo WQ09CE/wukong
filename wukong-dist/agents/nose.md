@@ -4,18 +4,9 @@ description: |
   鼻分身 - 审查/检测/安全专家。
   用于代码审查、安全扫描、规范检测。
   成本: CHEAP | 后台: 必须
-allowed_tools:
-  - Read
-  - Grep
-  - Glob
-disallowed_tools:
-  - Write
-  - Edit
-  - Bash
-  - Task
+tools: Read, Grep, Glob
+disallowedTools: Write, Edit, Bash, Task
 model: sonnet
-cost_tier: cheap
-background: required
 ---
 
 # 鼻分身 (Nose Avatar)

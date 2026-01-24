@@ -137,7 +137,7 @@ WUKONG_AGENTS=(
     "tongue.md"
     "body.md"
     "mind.md"
-    "scheduler.md"
+    "planner.md"
 )
 
 show_clean_preview() {
@@ -155,7 +155,7 @@ show_clean_preview() {
     echo ""
     echo "  Agents (${#WUKONG_AGENTS[@]} files):"
     for agent in "${WUKONG_AGENTS[@]}"; do
-        echo "    ~/.wukong/agents/$agent"
+        echo "    ~/.claude/agents/$agent"
     done
     echo ""
     echo "  Rules:"
@@ -213,21 +213,21 @@ clean_old_version() {
         echo -e "  ${GREEN}[ok]${NC} Removed $skill_count Wukong skill files"
     fi
 
-    # Clean agents (only Wukong-specific files) from ~/.wukong/agents/
-    if [ -d "$GLOBAL_WUKONG_DIR/agents" ]; then
+    # Clean agents (only Wukong-specific files) from ~/.claude/agents/
+    if [ -d "$GLOBAL_CLAUDE_DIR/agents" ]; then
         local agent_count=0
         for agent in "${WUKONG_AGENTS[@]}"; do
-            if [ -f "$GLOBAL_WUKONG_DIR/agents/$agent" ]; then
-                rm -f "$GLOBAL_WUKONG_DIR/agents/$agent"
+            if [ -f "$GLOBAL_CLAUDE_DIR/agents/$agent" ]; then
+                rm -f "$GLOBAL_CLAUDE_DIR/agents/$agent"
                 ((agent_count++))
             fi
         done
         echo -e "  ${GREEN}[ok]${NC} Removed $agent_count Wukong agent files"
     fi
-    # Also clean old location ~/.claude/agents/ (migration)
-    if [ -d "$GLOBAL_CLAUDE_DIR/agents" ]; then
+    # Also clean old location ~/.wukong/agents/ (migration from old version)
+    if [ -d "$GLOBAL_WUKONG_DIR/agents" ]; then
         for agent in "${WUKONG_AGENTS[@]}"; do
-            rm -f "$GLOBAL_CLAUDE_DIR/agents/$agent" 2>/dev/null || true
+            rm -f "$GLOBAL_WUKONG_DIR/agents/$agent" 2>/dev/null || true
         done
     fi
 
@@ -430,7 +430,7 @@ echo -e "${BLUE}[1/5] Project Files${NC}"
 mkdir -p "$CLAUDE_DIR/rules"
 mkdir -p "$CLAUDE_DIR/commands"
 mkdir -p "$CLAUDE_DIR/skills"
-mkdir -p "$WUKONG_DIR/agents"
+mkdir -p "$CLAUDE_DIR/agents"
 mkdir -p "$WUKONG_DIR/notepads"
 mkdir -p "$WUKONG_DIR/plans"
 mkdir -p "$WUKONG_DIR/context/current"
@@ -466,11 +466,11 @@ if [ $DEPRECATED_COUNT -gt 0 ]; then
     echo -e "  ${GREEN}[ok]${NC} Cleaned $DEPRECATED_COUNT deprecated skill files"
 fi
 
-# 复制 agents (六根分身定义) → ~/.wukong/agents/
+# 复制 agents (六根分身定义) → ~/.claude/agents/
 if [ -d "$SOURCE_DIR/agents" ] && ls "$SOURCE_DIR"/agents/*.md 1>/dev/null 2>&1; then
-    cp "$SOURCE_DIR"/agents/*.md "$WUKONG_DIR/agents/"
+    cp "$SOURCE_DIR"/agents/*.md "$CLAUDE_DIR/agents/"
     AGENT_COUNT=$(find "$SOURCE_DIR/agents" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
-    echo -e "  ${GREEN}[ok]${NC} Agents ($AGENT_COUNT files) → ~/.wukong/agents/"
+    echo -e "  ${GREEN}[ok]${NC} Agents ($AGENT_COUNT files) → ~/.claude/agents/"
 fi
 
 # 复制模板

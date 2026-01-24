@@ -18,7 +18,7 @@ Task(subagent_type="eye", prompt="...")   # 眼分身
 Task(subagent_type="body", prompt="...")  # 身分身/斗战胜佛
 ```
 
-## Available Agents (六根分身)
+## Available Agents (六根分身 + 规划器)
 
 | Agent | 中文名 | Model | Cost | Background | Purpose |
 |-------|--------|-------|------|------------|---------|
@@ -28,6 +28,22 @@ Task(subagent_type="body", prompt="...")  # 身分身/斗战胜佛
 | `tongue` | 舌分身 | Sonnet | MEDIUM | Optional | 测试·文档·验证 |
 | `body` | 斗战胜佛 | Opus | EXPENSIVE | Forbidden | 实现·修复·重构 |
 | `mind` | 意分身 | Opus | EXPENSIVE | Forbidden | 设计·架构·决策 |
+| `planner` | 规划分身 | Haiku | CHEAP | Optional | L1路由·任务规划 |
+
+### Planner Agent (L1 智能路由)
+
+Planner 是一个特殊的轻量级 agent，用于 L1 路由层：
+
+- **触发时机**: L0 规则路由返回 `confidence < 0.7` 时
+- **职责**: 分析任务，返回 track + phases + complexity
+- **模型**: Haiku (快速、低成本)
+- **输入**: `TASK: {任务描述}` + `L0_RESULT: {规则匹配结果}`
+- **输出**: JSON 格式的执行计划
+
+```
+L0 规则路由 → confidence < 0.7 → Planner (Haiku) → 执行计划
+            → confidence >= 0.7 → 直接使用 L0 结果
+```
 
 ### Agent Selection Guide
 
@@ -82,17 +98,20 @@ Task(subagent_type="body", prompt="...")  # 身分身/斗战胜佛
 
 ## Agent Definition Files
 
-Agent 定义文件位置：`~/.wukong/agents/`
+Agent 定义文件位置：`~/.claude/agents/`（Claude Code 标准位置）
 
 ```
-~/.wukong/agents/
+~/.claude/agents/
 ├── eye.md      # 眼分身定义
 ├── ear.md      # 耳分身定义
 ├── nose.md     # 鼻分身定义
 ├── tongue.md   # 舌分身定义
 ├── body.md     # 斗战胜佛定义
-└── mind.md     # 意分身定义
+├── mind.md     # 意分身定义
+└── planner.md  # 规划分身定义 (L1 路由)
 ```
+
+> **重要**: 必须放在 `~/.claude/agents/` 目录下，Claude Code 的 Task tool 才能识别自定义 `subagent_type`。
 
 ## Commands & Skills
 

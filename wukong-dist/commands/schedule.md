@@ -29,7 +29,7 @@ confidence >= 0.7? ──YES──→ 直接输出结果
     NO (needs_llm=true)
     ↓
 ┌─────────────────────────────────────┐
-│  L1: Haiku 调度分身 (~300ms)         │
+│  L1: Haiku 规划分身 (~300ms)         │
 │  - Task(model="haiku")              │
 │  - 精确分类 + 复杂度判断             │
 │  - 返回 track + complexity + phases │
@@ -64,31 +64,31 @@ python3 ~/.wukong/runtime/cli.py analyze "{user_task}"
 - `confidence < 0.7` (needs_llm=true)
 - 用户指定 `--force-llm`
 
-### Step 3: L1 Haiku 调度分身 (如需)
+### Step 3: L1 Haiku 规划分身 (如需)
 
-如果需要 L1，召唤 Haiku 调度分身:
+如果需要 L1，召唤 Haiku 规划分身:
 
 ```
-召唤 Haiku 调度分身:
-- 分身: scheduler (调度分身)
+召唤 Haiku 规划分身:
+- 分身: planner (规划分身)
 - 模型: haiku
 - 原因: L0 置信度不足，需要更精确的任务分类
-- 技能: 读取 scheduler.md skill
+- 技能: 读取 planner.md agent 定义
 - 预期: JSON 格式的 {track, complexity, confidence, reasoning, phases}
 ```
 
 **Task 工具调用**:
 ```json
 {
-  "subagent_type": "haiku",
+  "subagent_type": "planner",
   "model": "haiku",
-  "prompt": "你是 Wukong 的调度分身...\n\nTASK: {user_task}\nL0_RESULT: {l0_result_json}\n\n请分析任务并输出 JSON 格式的调度结果。"
+  "prompt": "你是 Wukong 的规划分身...\n\nTASK: {user_task}\nL0_RESULT: {l0_result_json}\n\n请分析任务并输出 JSON 格式的规划结果。"
 }
 ```
 
 **Haiku 分身 Prompt 模板**:
 ```
-你是 Wukong 的调度分身 - 专门负责分析任务并选择最佳执行轨道。
+你是 Wukong 的规划分身 - 专门负责分析任务并选择最佳执行轨道。
 
 ## Input
 TASK: {user_task}
@@ -119,13 +119,15 @@ L0_RESULT: {l0_result_json}
 - medium: 2-3个文件、中等改动
 - complex: 4+文件、架构变更
 
-## Agent Nodes
+## Agent Nodes (CRITICAL - USE EXACT IDs)
 - eye_explore: 眼分身 (探索)
 - ear_understand: 耳分身 (需求)
 - nose_analyze / nose_review: 鼻分身 (分析/审查)
 - tongue_verify: 舌分身 (测试)
 - body_implement: 斗战胜佛 (实现)
 - mind_design: 意分身 (设计)
+
+**禁止使用变体**: ear_analyst, eye_explorer, mind_architect, body_impl, tongue_tester, nose_reviewer 等
 ```
 
 ### Step 4: 输出结果
@@ -173,13 +175,13 @@ L0_RESULT: {l0_result_json}
 
 3. **判断是否需要 L1**
    - 如果 `needs_llm=true` 或 `--force-llm`
-   - 则召唤 Haiku 调度分身 (使用 Task 工具)
+   - 则召唤 Haiku 规划分身 (使用 Task 工具)
 
 4. **格式化输出**
    - 使用上面定义的 Markdown 格式
    - 包含路由层级信息
 
-## Scheduler Configuration Reference
+## Planner Configuration Reference
 
 ### 分身成本配置
 

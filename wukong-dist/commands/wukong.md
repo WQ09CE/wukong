@@ -112,9 +112,9 @@ def read_skill(skill_file):
 
 skill_content = read_skill("{skill-file}.md")
 
-# 2. 召唤分身
+# 2. 召唤分身 (必须指定 allowed_tools 预授权!)
 Task(
-  subagent_type="general-purpose",  # 或 "Explore" 用于眼分身
+  subagent_type="eye",  # 或其他分身类型
   prompt=f"""
 {skill_content}
 
@@ -124,9 +124,21 @@ Task(
 ## CONTEXT
 {compact_context}  # 如意金箍棒缩形态
 """,
-  run_in_background=background  # 眼分身和鼻分身通常后台运行
+  run_in_background=background,  # 眼分身和鼻分身通常后台运行
+  allowed_tools=tools_for_avatar  # 后台分身必须预授权工具!
 )
 ```
+
+**allowed_tools 配置表** (后台分身必须预授权，否则工具调用会被拒绝):
+
+| 分身 | allowed_tools | 说明 |
+|------|---------------|------|
+| 眼 (eye) | `["Read", "Glob", "Grep", "WebSearch", "WebFetch"]` | 只读探索+网络搜索 |
+| 鼻 (nose) | `["Read", "Glob", "Grep"]` | 只读审查 |
+| 舌 (tongue) | `["Read", "Glob", "Bash"]` | 测试执行 |
+| 身 (body) | `["Read", "Write", "Edit", "Bash", "Glob", "Grep"]` | 完整实现 |
+| 意 (mind) | `["Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"]` | 设计文档+技术调研 |
+| 耳 (ear) | `["Read"]` | 需求分析 |
 
 ## Workflow Rules
 
@@ -156,23 +168,23 @@ Task(
 - 🔹 **常形态** - 结构化摘要
 - 🔸 **缩形态** - 核心要点 (<500字，跨会话传递用)
 
-## L1 Scheduler Integration (Haiku 增强路由)
+## L1 规划分身 (Haiku Planner)
 
-> 当 L0 规则路由置信度不足时，调用 Haiku scheduler agent 增强路由决策。
+> 当 L0 规则路由置信度不足时，调用 Haiku 规划分身增强路由决策。
 
 **触发条件**: `analyze` 返回 `needs_llm: true` (confidence < 0.7)
 
 **调用方式**:
 ```python
-# 读取 scheduler agent 定义
-scheduler_prompt = Read("~/.claude/agents/scheduler.md")  # 或项目级
+# 读取 planner agent 定义
+planner_prompt = Read("~/.claude/agents/planner.md")
 
-# 调用 Haiku scheduler
+# 调用 Haiku 规划分身
 Task(
-    subagent_type="general-purpose",
+    subagent_type="planner",
     model="haiku",
     prompt=f"""
-{scheduler_prompt}
+{planner_prompt}
 
 TASK: {用户任务描述}
 L0_RESULT: {L0 规则路由结果 JSON}

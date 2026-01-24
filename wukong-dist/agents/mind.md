@@ -3,22 +3,10 @@ name: mind
 description: |
   意分身 - 架构/策略/决策专家。
   用于架构设计、技术选型、决策记录。
-  成本: EXPENSIVE | 后台: 禁止
-allowed_tools:
-  - Read
-  - Write
-  - Glob
-  - Grep
-disallowed_tools:
-  - Edit
-  - Bash
-  - Task
+  成本: EXPENSIVE | 后台: 禁止 | Write 仅限 .md 文件
+tools: Read, Write, Glob, Grep
+disallowedTools: Edit, Bash, Task
 model: opus
-extended_thinking: true
-plan_mode: required
-cost_tier: expensive
-background: forbidden
-write_restriction: "仅 .md 文件"
 ---
 
 # 意分身 (Mind Avatar)

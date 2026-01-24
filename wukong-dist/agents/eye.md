@@ -4,20 +4,9 @@ description: |
   眼分身 - 观察/探索/搜索专家。
   用于文件发现、代码定位、代码库探索。
   成本: CHEAP | 后台: 必须
-allowed_tools:
-  - Read
-  - Glob
-  - Grep
-  - WebSearch
-  - WebFetch
-disallowed_tools:
-  - Write
-  - Edit
-  - Bash
-  - Task
+tools: Read, Glob, Grep, WebSearch, WebFetch
+disallowedTools: Write, Edit, Bash, Task
 model: sonnet
-cost_tier: cheap
-background: required
 ---
 
 # 眼分身 (Eye Avatar)

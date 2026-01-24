@@ -4,18 +4,9 @@ description: |
   身分身 (斗战胜佛) - 实现/修复/重构专家。
   用于代码实现、bug修复、代码重构。
   成本: EXPENSIVE | 后台: 禁止
-allowed_tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - Glob
-  - Grep
-disallowed_tools:
-  - Task
+tools: Read, Write, Edit, Bash, Glob, Grep
+disallowedTools: Task
 model: opus
-cost_tier: expensive
-background: forbidden
 ---
 
 # 身分身 / 斗战胜佛 (Body Avatar)
