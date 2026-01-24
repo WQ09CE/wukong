@@ -1,6 +1,23 @@
 # Wukong Development Guide (for Claude)
 
 > This file provides context for Claude to iterate on the Wukong project correctly.
+>
+> **See also:** `AGENTS.md` for available agents and their capabilities.
+
+## Core Protocol
+
+Wukong 使用六根分身系统。**本体是调度者，不是执行者。**
+
+- 核心协议: `~/.claude/rules/00-wukong-core.md`
+- 分身定义: `~/.wukong/agents/*.md`
+- 分身边界: `~/.claude/skills/jie.md`
+
+调用分身使用 Task tool:
+```
+Task(subagent_type="eye", prompt="...")   # 眼分身 - 探索
+Task(subagent_type="body", prompt="...")  # 斗战胜佛 - 实现
+Task(subagent_type="mind", prompt="...")  # 意分身 - 设计
+```
 
 ## Directory Mapping
 
@@ -10,6 +27,7 @@ Source (repo)              →  Installed (user home)
 wukong-dist/rules/         →  ~/.claude/rules/
 wukong-dist/skills/        →  ~/.claude/skills/
 wukong-dist/commands/      →  ~/.claude/commands/
+wukong-dist/agents/        →  ~/.wukong/agents/      ← Agent definitions
 wukong-dist/hooks/         →  ~/.wukong/hooks/
 wukong-dist/context/       →  ~/.wukong/context/
 wukong-dist/templates/     →  ~/.wukong/templates/
@@ -17,7 +35,7 @@ wukong-dist/templates/     →  ~/.wukong/templates/
 
 **Key Insight:**
 - `~/.claude/` = Claude Code configuration (rules, skills, commands)
-- `~/.wukong/` = Runtime data (hooks, context, notepads, plans)
+- `~/.wukong/` = Runtime data (hooks, context, agents, notepads, plans)
 
 ## Development Workflow
 
@@ -66,6 +84,7 @@ cp ~/.claude/rules/00-wukong-core.md wukong-dist/rules/
 ```
 wukong/
 ├── CLAUDE.md              # This file (Claude dev context)
+├── AGENTS.md              # Agent registry (Claude Code reads this!)
 ├── README.md              # User documentation
 ├── install.sh             # Installation script (Mac/Linux)
 ├── install.ps1            # Installation script (Windows)
@@ -73,6 +92,7 @@ wukong/
 │   ├── rules/             # Core rules (auto-loaded)
 │   ├── skills/            # Skill definitions
 │   ├── commands/          # Custom commands
+│   ├── agents/            # Agent definitions (六根分身)
 │   ├── hooks/             # PreCompact hooks etc.
 │   ├── context/           # Context templates
 │   └── templates/         # Notepad templates
