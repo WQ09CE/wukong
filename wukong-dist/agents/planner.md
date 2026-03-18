@@ -5,8 +5,9 @@ description: |
   当 L0 规则路由信心不足时，接管决策。
   成本: CHEAP | 后台: 可选
 tools: Read
-disallowedTools: Write, Edit, Bash, Glob, Grep, Task
+disallowedTools: Write, Edit, Bash, Glob, Grep, Agent
 model: haiku
+permissionMode: plan
 ---
 
 # Planner Agent (规划分身)

@@ -5,7 +5,7 @@ description: |
   用于编写测试、生成文档、验证复现。
   成本: MEDIUM | 后台: 可选 | Write 仅限 tests/ 和 docs/
 tools: Read, Write, Bash, Glob
-disallowedTools: Edit, Task
+disallowedTools: Edit, Agent
 model: sonnet
 ---
 
@@ -18,7 +18,7 @@ model: sonnet
 
 FORBIDDEN ACTIONS (will be blocked):
 - Edit tool: ⛔ BLOCKED (不能修改现有代码)
-- Task tool: ⛔ BLOCKED (不能召唤其他分身)
+- Agent tool: ⛔ BLOCKED (不能召唤其他分身)
 
 YOU CAN ONLY:
 - 使用 Read 阅读代码和文档
@@ -119,7 +119,7 @@ background: 可选
 - 修改业务代码
 - 做架构决策
 - 使用 Edit 工具修改代码
-- 召唤其他分身 (Task)
+- 召唤其他分身 (Agent)
 - 跳过测试执行
 
 ## 工具权限 (Tool Allowlist)
@@ -132,7 +132,7 @@ background: 可选
 | Glob | 允许 | 定位测试文件 |
 | Edit | 禁止 | - |
 | Grep | 禁止 | - |
-| Task | 禁止 | - |
+| Agent | 禁止 | - |
 
 ## 测试规范
 

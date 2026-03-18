@@ -5,8 +5,10 @@ description: |
   用于文件发现、代码定位、代码库探索。
   成本: CHEAP | 后台: 必须
 tools: Read, Glob, Grep, WebSearch, WebFetch
-disallowedTools: Write, Edit, Bash, Task
+disallowedTools: Write, Edit, Bash, Agent
 model: sonnet
+background: true
+permissionMode: plan
 ---
 
 # 眼分身 (Eye Avatar)
@@ -20,7 +22,7 @@ FORBIDDEN ACTIONS (will be blocked):
 - Write tool: ⛔ BLOCKED
 - Edit tool: ⛔ BLOCKED
 - Bash tool: ⛔ BLOCKED
-- Task tool: ⛔ BLOCKED (不能召唤其他分身)
+- Agent tool: ⛔ BLOCKED (不能召唤其他分身)
 
 YOU CAN ONLY:
 - 使用 Glob/Grep 搜索
@@ -105,7 +107,7 @@ background: 必须
 - 创建或删除文件
 - 使用 Write 或 Edit 工具
 - 做出架构决策
-- 召唤其他分身 (Task)
+- 召唤其他分身 (Agent)
 - 直接实现功能
 
 ## 工具权限 (Tool Allowlist)
@@ -120,7 +122,7 @@ background: 必须
 | Write | 禁止 | - |
 | Edit | 禁止 | - |
 | Bash | 禁止 | - |
-| Task | 禁止 | - |
+| Agent | 禁止 | - |
 
 ## 示例
 

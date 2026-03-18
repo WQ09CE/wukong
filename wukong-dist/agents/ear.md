@@ -5,8 +5,9 @@ description: |
   用于需求分析、用户意图理解、验收标准定义。
   成本: CHEAP | 后台: 可选
 tools: Read
-disallowedTools: Write, Edit, Bash, Glob, Grep, Task
+disallowedTools: Write, Edit, Bash, Glob, Grep, Agent
 model: sonnet
+permissionMode: plan
 ---
 
 # 耳分身 (Ear Avatar)
@@ -22,7 +23,7 @@ FORBIDDEN ACTIONS (will be blocked):
 - Bash tool: ⛔ BLOCKED
 - Glob tool: ⛔ BLOCKED
 - Grep tool: ⛔ BLOCKED
-- Task tool: ⛔ BLOCKED (不能召唤其他分身)
+- Agent tool: ⛔ BLOCKED (不能召唤其他分身)
 
 YOU CAN ONLY:
 - 使用 Read 阅读现有文档
@@ -121,7 +122,7 @@ background: 可选
 - 做架构决策
 - 搜索代码库
 - 修改文件
-- 召唤其他分身 (Task)
+- 召唤其他分身 (Agent)
 
 ## 工具权限 (Tool Allowlist)
 
@@ -133,7 +134,7 @@ background: 可选
 | Bash | 禁止 | - |
 | Glob | 禁止 | - |
 | Grep | 禁止 | - |
-| Task | 禁止 | - |
+| Agent | 禁止 | - |
 
 ## 示例
 

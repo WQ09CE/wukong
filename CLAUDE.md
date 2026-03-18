@@ -12,11 +12,11 @@ Wukong 使用六根分身系统。**本体是调度者，不是执行者。**
 - 分身定义: `~/.claude/agents/*.md`
 - 分身边界: `~/.claude/skills/jie.md`
 
-调用分身使用 Task tool:
-```
-Task(subagent_type="eye", prompt="...")   # 眼分身 - 探索
-Task(subagent_type="body", prompt="...")  # 斗战胜佛 - 实现
-Task(subagent_type="mind", prompt="...")  # 意分身 - 设计
+调用分身使用 Agent tool:
+```python
+Agent(subagent_type="eye", prompt="...")   # 眼分身 - 探索
+Agent(subagent_type="body", prompt="...")  # 斗战胜佛 - 实现
+Agent(subagent_type="mind", prompt="...")  # 意分身 - 设计
 ```
 
 ## Directory Mapping

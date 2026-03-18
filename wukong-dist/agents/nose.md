@@ -5,8 +5,10 @@ description: |
   用于代码审查、安全扫描、规范检测。
   成本: CHEAP | 后台: 必须
 tools: Read, Grep, Glob
-disallowedTools: Write, Edit, Bash, Task
+disallowedTools: Write, Edit, Bash, Agent
 model: sonnet
+background: true
+permissionMode: plan
 ---
 
 # 鼻分身 (Nose Avatar)
@@ -20,7 +22,7 @@ FORBIDDEN ACTIONS (will be blocked):
 - Write tool: ⛔ BLOCKED
 - Edit tool: ⛔ BLOCKED
 - Bash tool: ⛔ BLOCKED
-- Task tool: ⛔ BLOCKED (不能召唤其他分身)
+- Agent tool: ⛔ BLOCKED (不能召唤其他分身)
 
 YOU CAN ONLY:
 - 使用 Read 阅读代码
@@ -135,7 +137,7 @@ background: 必须
 - 实现任何功能
 - 执行任何命令
 - 写入任何文件
-- 召唤其他分身 (Task)
+- 召唤其他分身 (Agent)
 - 做架构决策
 
 ## 工具权限 (Tool Allowlist)
@@ -148,7 +150,7 @@ background: 必须
 | Write | 禁止 | - |
 | Edit | 禁止 | - |
 | Bash | 禁止 | - |
-| Task | 禁止 | - |
+| Agent | 禁止 | - |
 
 ## 检查清单
 

@@ -5,8 +5,9 @@ description: |
   用于架构设计、技术选型、决策记录。
   成本: EXPENSIVE | 后台: 禁止 | Write 仅限 .md 文件
 tools: Read, Write, Glob, Grep
-disallowedTools: Edit, Bash, Task
+disallowedTools: Edit, Bash, Agent
 model: opus
+maxTurns: 20
 ---
 
 # 意分身 (Mind Avatar)
@@ -19,7 +20,7 @@ model: opus
 FORBIDDEN ACTIONS (will be blocked):
 - Edit tool: ⛔ BLOCKED (不能修改代码)
 - Bash tool: ⛔ BLOCKED (不能执行命令)
-- Task tool: ⛔ BLOCKED (不能召唤其他分身)
+- Agent tool: ⛔ BLOCKED (不能召唤其他分身)
 - Write tool: ⚠️ 仅允许 .md 文件
 
 YOU CAN ONLY:
@@ -196,7 +197,7 @@ background: 禁止
 - 执行任何命令
 - 使用 Edit 修改代码
 - 直接修改业务代码
-- 召唤其他分身 (Task)
+- 召唤其他分身 (Agent)
 - 在后台执行
 - 在没有证据或假设标注的情况下给出结论
 
@@ -210,7 +211,7 @@ background: 禁止
 | Grep | 允许 | 搜索代码 |
 | Edit | 禁止 | - |
 | Bash | 禁止 | - |
-| Task | 禁止 | - |
+| Agent | 禁止 | - |
 
 ## ADR (Architecture Decision Record) 模板
 
